@@ -1,11 +1,17 @@
 import { StyleSheet } from 'react-native';
 import colors from '../../shared/constants/colors';
-import { spacing, typography } from '../../shared/constants/theme';
+import { spacing, typography, borderRadius } from '../../shared/constants/theme';
 
 export default StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.white,
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.xl,
   },
   header: {
     padding: spacing.md,
@@ -17,7 +23,7 @@ export default StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.lightGray,
-    borderRadius: 10,
+    borderRadius: borderRadius.medium,
     paddingHorizontal: spacing.md,
     marginBottom: spacing.md,
   },
@@ -36,7 +42,7 @@ export default StyleSheet.create({
   filterChip: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    borderRadius: 20,
+    borderRadius: borderRadius.round,
     backgroundColor: colors.lightGray,
     marginRight: spacing.sm,
   },
@@ -45,6 +51,7 @@ export default StyleSheet.create({
   },
   filterText: {
     color: colors.gray,
+    fontSize: 14,
   },
   filterTextActive: {
     color: colors.white,
@@ -55,7 +62,7 @@ export default StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.secondary,
     padding: spacing.md,
-    borderRadius: 10,
+    borderRadius: borderRadius.medium,
     gap: spacing.sm,
   },
   scannerButtonText: {
@@ -65,12 +72,6 @@ export default StyleSheet.create({
   },
   listContent: {
     padding: spacing.md,
-  },
-  centerContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: spacing.xl,
   },
   emptyText: {
     fontSize: 18,
@@ -82,6 +83,12 @@ export default StyleSheet.create({
     fontSize: 14,
     color: colors.gray,
     marginTop: spacing.sm,
+    textAlign: 'center',
+  },
+  errorText: {
+    fontSize: 16,
+    color: colors.error,
+    textAlign: 'center',
   },
   detailContainer: {
     flex: 1,

@@ -1,16 +1,15 @@
-import api from '../../../api/api';  // ✅ Import root API
+import api from '../../../api/api';
 
 class RecipeService {
   async getAllRecipes(filters = {}) {
     try {
-      const { mealType, difficulty, search, limit } = filters;
+      const { mealType, difficulty, search, limit = 20 } = filters;
       const params = { mealType, difficulty, search, limit };
-      
       const response = await api.get('/recipes', { params });
       return { success: true, recipes: response.data };
     } catch (error) {
       console.error('Failed to fetch recipes:', error);
-      return { success: false, error: error.response?.data?.message };
+      return { success: false, recipes: [], error: error.response?.data?.message };
     }
   }
 
@@ -20,7 +19,7 @@ class RecipeService {
       return { success: true, recipe: response.data };
     } catch (error) {
       console.error('Failed to fetch recipe:', error);
-      return { success: false, error: error.response?.data?.message };
+      return { success: false, recipe: null, error: error.response?.data?.message };
     }
   }
 
@@ -33,7 +32,7 @@ class RecipeService {
       return { success: true, recipes: response.data };
     } catch (error) {
       console.error('Failed to find recipes:', error);
-      return { success: false, error: error.response?.data?.message };
+      return { success: false, recipes: [], error: error.response?.data?.message };
     }
   }
 
@@ -43,7 +42,7 @@ class RecipeService {
       return { success: true, recipe: response.data };
     } catch (error) {
       console.error('Failed to adjust servings:', error);
-      return { success: false, error: error.response?.data?.message };
+      return { success: false, recipe: null, error: error.response?.data?.message };
     }
   }
 
@@ -53,7 +52,7 @@ class RecipeService {
       return { success: true, recipes: response.data };
     } catch (error) {
       console.error('Failed to get saved recipes:', error);
-      return { success: false, error: error.response?.data?.message };
+      return { success: false, recipes: [], error: error.response?.data?.message };
     }
   }
 }

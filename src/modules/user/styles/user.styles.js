@@ -1,0 +1,238 @@
+import { StyleSheet } from 'react-native';
+import colors from '../../shared/constants/colors';
+import { spacing, typography, borderRadius } from '../../shared/constants/theme';
+
+export default StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.white,
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  welcomeHeader: {
+    padding: spacing.lg,
+    backgroundColor: colors.primary,
+    borderBottomLeftRadius: borderRadius.large,
+    borderBottomRightRadius: borderRadius.large,
+  },
+  welcomeText: {
+    ...typography.body,
+    color: colors.white,
+    opacity: 0.9,
+  },
+  userName: {
+    ...typography.h2,
+    color: colors.white,
+    marginTop: spacing.xs,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    padding: spacing.lg,
+    marginTop: -spacing.xl,
+  },
+  statCard: {
+    backgroundColor: colors.white,
+    borderRadius: borderRadius.large,
+    padding: spacing.md,
+    alignItems: 'center',
+    minWidth: 100,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  statValue: {
+    ...typography.h2,
+    color: colors.black,
+    marginTop: spacing.sm,
+  },
+  statLabel: {
+    ...typography.caption,
+    color: colors.gray,
+    marginTop: spacing.xs,
+  },
+  section: {
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.lg,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  sectionTitle: {
+    ...typography.h3,
+    color: colors.black,
+  },
+  seeAllText: {
+    ...typography.bodySmall,
+    color: colors.primary,
+  },
+  emptyState: {
+    alignItems: 'center',
+    padding: spacing.xl,
+  },
+  emptyStateText: {
+    ...typography.body,
+    color: colors.gray,
+    marginTop: spacing.md,
+  },
+  profileHeader: {
+    alignItems: 'center',
+    padding: spacing.xl,
+    backgroundColor: colors.lightGray,
+  },
+  profileAvatar: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+  },
+  profileAvatarPlaceholder: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  profileAvatarText: {
+    fontSize: 40,
+    fontWeight: 'bold',
+    color: colors.white,
+  },
+  profileName: {
+    ...typography.h2,
+    marginTop: spacing.md,
+  },
+  profileEmail: {
+    ...typography.body,
+    color: colors.gray,
+    marginTop: spacing.xs,
+  },
+  avatarContainer: {
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+  },
+  avatar: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+  },
+  avatarPlaceholder: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  editAvatarIcon: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: colors.primary,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: colors.white,
+  },
+  formGroup: {
+    marginBottom: spacing.md,
+  },
+  label: {
+    ...typography.body,
+    color: colors.black,
+    marginBottom: spacing.xs,
+    fontWeight: '500',
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: colors.lightGray,
+    borderRadius: borderRadius.medium,
+    padding: spacing.md,
+    fontSize: 16,
+    backgroundColor: colors.white,
+  },
+  saveButton: {
+    backgroundColor: colors.primary,
+    padding: spacing.md,
+    borderRadius: borderRadius.medium,
+    alignItems: 'center',
+    marginTop: spacing.lg,
+  },
+  saveButtonText: {
+    color: colors.white,
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  menuSection: {
+    paddingHorizontal: spacing.lg,
+    marginTop: spacing.lg,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.lightGray,
+  },
+  menuLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  menuTitle: {
+    ...typography.body,
+    marginLeft: spacing.md,
+    color: colors.black,
+  },
+  version: {
+    textAlign: 'center',
+    color: colors.gray,
+    marginVertical: spacing.xl,
+    fontSize: 12,
+  },
+  settingItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.lightGray,
+  },
+  settingLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  settingTitle: {
+    ...typography.body,
+    marginLeft: spacing.md,
+    color: colors.black,
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: spacing.xl,
+    marginBottom: spacing.lg,
+    paddingVertical: spacing.md,
+    marginHorizontal: spacing.lg,
+    backgroundColor: colors.lightGray,
+    borderRadius: borderRadius.medium,
+  },
+  logoutText: {
+    ...typography.body,
+    color: colors.error,
+    marginLeft: spacing.sm,
+    fontWeight: 'bold',
+  },
+});
