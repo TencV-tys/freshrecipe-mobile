@@ -13,11 +13,20 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import api from '../../../api/api';
-import colors from '../../shared/constants/colors';
+
+const colors = {
+  primary: '#ff6b6b',
+  secondary: '#4ecdc4',
+  white: '#ffffff',
+  gray: '#666666',
+  lightGray: '#f5f5f5',
+  black: '#000000',
+  success: '#00c851',
+};
 
 const ForgotPasswordScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
-  const [step, setStep] = useState('request'); // request, token, reset
+  const [step, setStep] = useState('request');
   const [resetToken, setResetToken] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -34,9 +43,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
     try {
       const response = await api.post('/auth/forgot-password', { email });
       
-      // The backend returns a resetUrl in development mode
       if (response.data.resetUrl) {
-        // Extract token from URL
         const token = response.data.resetUrl.split('/').pop();
         setResetToken(token);
         setResetLink(response.data.resetUrl);
@@ -44,7 +51,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
       } else {
         Alert.alert(
           'Reset Link Sent',
-          'If an account exists with this email, a password reset link has been sent.\n\nFor development, check the backend console for the reset link.',
+          'If an account exists with this email, a password reset link has been sent.',
           [{ text: 'OK', onPress: () => navigation.goBack() }]
         );
       }
@@ -87,17 +94,9 @@ const ForgotPasswordScreen = ({ navigation }) => {
   };
 
   const copyToClipboard = () => {
-    // Simple copy to clipboard - we'll show an alert
-    Alert.alert('Reset Token', resetToken, [
-      { text: 'Copy Token', onPress: () => {
-        // In a real app, you'd use Clipboard API
-        Alert.alert('Token', `Use this token in the reset URL:\n${resetLink || resetToken}`);
-      }},
-      { text: 'OK' }
-    ]);
+    Alert.alert('Reset Token', `Use this token:\n${resetToken}`, [{ text: 'OK' }]);
   };
 
-  // Step 1: Request Reset Link
   if (step === 'request') {
     return (
       <KeyboardAvoidingView
@@ -148,73 +147,68 @@ const ForgotPasswordScreen = ({ navigation }) => {
     );
   }
 
-  // Step 2: Show Token (Development Mode)
-  if (step === 'token') {
-    return (
-      <ScrollView contentContainerStyle={styles.container}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Icon name="arrow-back" size={24} color={colors.primary} />
+  return (
+    <ScrollView contentContainerStyle={styles.container}>
+      <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+        <Icon name="arrow-back" size={24} color={colors.primary} />
+      </TouchableOpacity>
+
+      <View style={styles.header}>
+        <Icon name="mail-outline" size={64} color={colors.success} />
+        <Text style={styles.title}>Reset Link Generated</Text>
+        <Text style={styles.subtitle}>
+          For development, use this reset token to set your new password.
+        </Text>
+      </View>
+
+      <View style={styles.tokenContainer}>
+        <Text style={styles.tokenLabel}>Reset Token:</Text>
+        <View style={styles.tokenBox}>
+          <Text style={styles.tokenText}>{resetToken}</Text>
+        </View>
+        <TouchableOpacity style={styles.copyButton} onPress={copyToClipboard}>
+          <Icon name="copy-outline" size={20} color={colors.primary} />
+          <Text style={styles.copyText}>Copy Token</Text>
         </TouchableOpacity>
+      </View>
 
-        <View style={styles.header}>
-          <Icon name="mail-outline" size={64} color={colors.success} />
-          <Text style={styles.title}>Reset Link Generated</Text>
-          <Text style={styles.subtitle}>
-            For development, use this reset token to set your new password.
-          </Text>
-        </View>
+      <View style={styles.resetForm}>
+        <Text style={styles.sectionTitle}>Set New Password</Text>
+        
+        <TextInput
+          style={styles.input}
+          placeholder="New Password"
+          value={newPassword}
+          onChangeText={setNewPassword}
+          secureTextEntry
+        />
+        
+        <TextInput
+          style={styles.input}
+          placeholder="Confirm New Password"
+          value={confirmPassword}
+          onChangeText={setConfirmPassword}
+          secureTextEntry
+        />
 
-        <View style={styles.tokenContainer}>
-          <Text style={styles.tokenLabel}>Reset Token:</Text>
-          <View style={styles.tokenBox}>
-            <Text style={styles.tokenText}>{resetToken}</Text>
-          </View>
-          <TouchableOpacity style={styles.copyButton} onPress={copyToClipboard}>
-            <Icon name="copy-outline" size={20} color={colors.primary} />
-            <Text style={styles.copyText}>Copy Token</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.resetForm}>
-          <Text style={styles.sectionTitle}>Set New Password</Text>
-          
-          <TextInput
-            style={styles.input}
-            placeholder="New Password"
-            value={newPassword}
-            onChangeText={setNewPassword}
-            secureTextEntry
-          />
-          
-          <TextInput
-            style={styles.input}
-            placeholder="Confirm New Password"
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            secureTextEntry
-          />
-
-          <TouchableOpacity
-            style={styles.button}
-            onPress={handleResetPassword}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color={colors.white} />
-            ) : (
-              <Text style={styles.buttonText}>Reset Password</Text>
-            )}
-          </TouchableOpacity>
-        </View>
-
-        <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-          <Text style={styles.link}>Back to Login</Text>
+        <TouchableOpacity
+          style={styles.button}
+          onPress={handleResetPassword}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color={colors.white} />
+          ) : (
+            <Text style={styles.buttonText}>Reset Password</Text>
+          )}
         </TouchableOpacity>
-      </ScrollView>
-    );
-  }
+      </View>
 
-  return null;
+      <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+        <Text style={styles.link}>Back to Login</Text>
+      </TouchableOpacity>
+    </ScrollView>
+  );
 };
 
 const styles = StyleSheet.create({

@@ -1,6 +1,5 @@
 import { StyleSheet } from 'react-native';
 import colors from '../../shared/constants/colors';
-import { spacing, typography } from '../../shared/constants/theme';
 
 export default StyleSheet.create({
   container: {
@@ -9,13 +8,13 @@ export default StyleSheet.create({
   },
   messagesContainer: {
     flex: 1,
-    padding: spacing.md,
+    padding: 16,
   },
   messageBubble: {
     maxWidth: '80%',
-    padding: spacing.md,
+    padding: 16,
     borderRadius: 20,
-    marginBottom: spacing.md,
+    marginBottom: 16,
   },
   userBubble: {
     backgroundColor: colors.primary,
@@ -29,11 +28,11 @@ export default StyleSheet.create({
   },
   userText: {
     color: colors.white,
-    ...typography.body,
+    fontSize: 16,
   },
   botText: {
     color: colors.black,
-    ...typography.body,
+    fontSize: 16,
   },
   timestamp: {
     fontSize: 10,
@@ -42,7 +41,7 @@ export default StyleSheet.create({
   },
   inputContainer: {
     flexDirection: 'row',
-    padding: spacing.md,
+    padding: 16,
     borderTopWidth: 1,
     borderTopColor: colors.lightGray,
     backgroundColor: colors.white,
@@ -52,9 +51,9 @@ export default StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.lightGray,
     borderRadius: 25,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    marginRight: spacing.sm,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginRight: 8,
     fontSize: 16,
   },
   sendButton: {
@@ -71,7 +70,7 @@ export default StyleSheet.create({
   typingIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: spacing.md,
+    padding: 16,
   },
   dot: {
     width: 8,
@@ -82,11 +81,11 @@ export default StyleSheet.create({
   },
   suggestionChip: {
     backgroundColor: colors.lightGray,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     borderRadius: 20,
-    marginRight: spacing.sm,
-    marginBottom: spacing.sm,
+    marginRight: 8,
+    marginBottom: 8,
   },
   suggestionText: {
     color: colors.primary,

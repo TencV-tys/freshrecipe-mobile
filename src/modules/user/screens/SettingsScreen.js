@@ -10,8 +10,19 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useAuth } from '../../../context/AuthContext';
-import colors from '../../shared/constants/colors';
-import { spacing, typography } from '../../shared/constants/theme';
+
+// Local colors
+const colors = {
+  primary: '#ff6b6b',
+  secondary: '#4ecdc4',
+  white: '#ffffff',
+  black: '#000000',
+  gray: '#666666',
+  lightGray: '#f5f5f5',
+  darkGray: '#333333',
+  error: '#ff4444',
+  success: '#00c851',
+};
 
 const SettingsScreen = ({ navigation }) => {
   const { user, logout } = useAuth();
@@ -30,8 +41,13 @@ const SettingsScreen = ({ navigation }) => {
     );
   };
 
-  const SettingItem = ({ icon, title, value, onValueChange, type = 'switch' }) => (
-    <View style={styles.settingItem}>
+  const SettingItem = ({ icon, title, value, onValueChange, type = 'switch', onPress }) => (
+    <TouchableOpacity 
+      style={styles.settingItem} 
+      onPress={onPress}
+      disabled={type !== 'arrow'}
+      activeOpacity={type === 'arrow' ? 0.7 : 1}
+    >
       <View style={styles.settingLeft}>
         <Icon name={icon} size={24} color={colors.primary} />
         <Text style={styles.settingTitle}>{title}</Text>
@@ -43,10 +59,10 @@ const SettingsScreen = ({ navigation }) => {
           trackColor={{ false: colors.lightGray, true: colors.primary }}
           thumbColor={colors.white}
         />
-      ) : (
+      ) : type === 'arrow' ? (
         <Icon name="chevron-forward" size={20} color={colors.gray} />
-      )}
-    </View>
+      ) : null}
+    </TouchableOpacity>
   );
 
   return (
@@ -75,65 +91,46 @@ const SettingsScreen = ({ navigation }) => {
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Account</Text>
-        <TouchableOpacity
-          style={styles.settingItem}
+        <SettingItem
+          icon="person-outline"
+          title="Edit Profile"
+          type="arrow"
           onPress={() => navigation.navigate('EditProfile')}
-        >
-          <View style={styles.settingLeft}>
-            <Icon name="person-outline" size={24} color={colors.primary} />
-            <Text style={styles.settingTitle}>Edit Profile</Text>
-          </View>
-          <Icon name="chevron-forward" size={20} color={colors.gray} />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.settingItem}
+        />
+        <SettingItem
+          icon="lock-closed-outline"
+          title="Change Password"
+          type="arrow"
           onPress={() => navigation.navigate('ChangePassword')}
-        >
-          <View style={styles.settingLeft}>
-            <Icon name="lock-closed-outline" size={24} color={colors.primary} />
-            <Text style={styles.settingTitle}>Change Password</Text>
-          </View>
-          <Icon name="chevron-forward" size={20} color={colors.gray} />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.settingItem}
+        />
+        <SettingItem
+          icon="bookmark-outline"
+          title="Saved Recipes"
+          type="arrow"
           onPress={() => navigation.navigate('SavedRecipes')}
-        >
-          <View style={styles.settingLeft}>
-            <Icon name="bookmark-outline" size={24} color={colors.primary} />
-            <Text style={styles.settingTitle}>Saved Recipes</Text>
-          </View>
-          <Icon name="chevron-forward" size={20} color={colors.gray} />
-        </TouchableOpacity>
+        />
       </View>
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Support</Text>
-        <TouchableOpacity style={styles.settingItem}>
-          <View style={styles.settingLeft}>
-            <Icon name="help-circle-outline" size={24} color={colors.primary} />
-            <Text style={styles.settingTitle}>Help Center</Text>
-          </View>
-          <Icon name="chevron-forward" size={20} color={colors.gray} />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.settingItem}>
-          <View style={styles.settingLeft}>
-            <Icon name="document-text-outline" size={24} color={colors.primary} />
-            <Text style={styles.settingTitle}>Privacy Policy</Text>
-          </View>
-          <Icon name="chevron-forward" size={20} color={colors.gray} />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.settingItem}>
-          <View style={styles.settingLeft}>
-            <Icon name="information-circle-outline" size={24} color={colors.primary} />
-            <Text style={styles.settingTitle}>About</Text>
-          </View>
-          <Icon name="chevron-forward" size={20} color={colors.gray} />
-        </TouchableOpacity>
+        <SettingItem
+          icon="help-circle-outline"
+          title="Help Center"
+          type="arrow"
+          onPress={() => Alert.alert('Help Center', 'Coming soon!')}
+        />
+        <SettingItem
+          icon="document-text-outline"
+          title="Privacy Policy"
+          type="arrow"
+          onPress={() => Alert.alert('Privacy Policy', 'Coming soon!')}
+        />
+        <SettingItem
+          icon="information-circle-outline"
+          title="About"
+          type="arrow"
+          onPress={() => Alert.alert('About', 'FreshRecipe v1.0.0\n\nFind delicious Filipino recipes and scan ingredients with AI.')}
+        />
       </View>
 
       <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
@@ -152,19 +149,20 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
   },
   section: {
-    marginTop: spacing.lg,
-    paddingHorizontal: spacing.md,
+    marginTop: 24,
+    paddingHorizontal: 16,
   },
   sectionTitle: {
-    ...typography.h3,
-    marginBottom: spacing.md,
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 16,
     color: colors.gray,
   },
   settingItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: spacing.md,
+    paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: colors.lightGray,
   },
@@ -173,30 +171,31 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   settingTitle: {
-    ...typography.body,
-    marginLeft: spacing.md,
+    fontSize: 16,
+    marginLeft: 16,
+    color: colors.black,
   },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: spacing.xl,
-    marginBottom: spacing.lg,
-    paddingVertical: spacing.md,
-    marginHorizontal: spacing.md,
+    marginTop: 32,
+    marginBottom: 24,
+    paddingVertical: 16,
+    marginHorizontal: 16,
     backgroundColor: colors.lightGray,
     borderRadius: 10,
   },
   logoutText: {
-    ...typography.body,
+    fontSize: 16,
     color: colors.error,
-    marginLeft: spacing.sm,
+    marginLeft: 8,
     fontWeight: 'bold',
   },
   version: {
     textAlign: 'center',
     color: colors.gray,
-    marginBottom: spacing.xl,
+    marginBottom: 32,
     fontSize: 12,
   },
 });

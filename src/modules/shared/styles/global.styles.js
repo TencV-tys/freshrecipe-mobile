@@ -1,6 +1,5 @@
 import { StyleSheet } from 'react-native';
 import colors from '../constants/colors';
-import { spacing, typography, borderRadius } from '../constants/theme';
 
 export const globalStyles = StyleSheet.create({
   container: {
@@ -23,10 +22,14 @@ export const globalStyles = StyleSheet.create({
   },
   card: {
     backgroundColor: colors.white,
-    borderRadius: borderRadius.large,
-    padding: spacing.md,
-    margin: spacing.sm,
-    ...globalStyles.shadow,
+    borderRadius: 12,
+    padding: 16,
+    margin: 8,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   shadow: {
     shadowColor: colors.black,
@@ -38,15 +41,15 @@ export const globalStyles = StyleSheet.create({
   input: {
     borderWidth: 1,
     borderColor: colors.lightGray,
-    borderRadius: borderRadius.medium,
-    padding: spacing.md,
+    borderRadius: 8,
+    padding: 16,
     fontSize: 16,
     backgroundColor: colors.white,
   },
   button: {
     backgroundColor: colors.primary,
-    padding: spacing.md,
-    borderRadius: borderRadius.medium,
+    padding: 16,
+    borderRadius: 8,
     alignItems: 'center',
   },
   buttonText: {
@@ -55,23 +58,25 @@ export const globalStyles = StyleSheet.create({
     fontWeight: 'bold',
   },
   title: {
-    ...typography.h1,
+    fontSize: 32,
+    fontWeight: 'bold',
     color: colors.black,
   },
   subtitle: {
-    ...typography.h3,
+    fontSize: 24,
+    fontWeight: 'bold',
     color: colors.gray,
   },
   text: {
-    ...typography.body,
+    fontSize: 16,
     color: colors.black,
   },
   errorText: {
-    ...typography.caption,
+    fontSize: 12,
     color: colors.error,
   },
   successText: {
-    ...typography.caption,
+    fontSize: 12,
     color: colors.success,
   },
 });

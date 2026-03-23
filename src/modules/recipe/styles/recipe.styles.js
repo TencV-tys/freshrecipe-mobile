@@ -1,6 +1,5 @@
 import { StyleSheet } from 'react-native';
 import colors from '../../shared/constants/colors';
-import { spacing, typography, borderRadius } from '../../shared/constants/theme';
 
 export default StyleSheet.create({
   container: {
@@ -11,10 +10,10 @@ export default StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: spacing.xl,
+    padding: 32,
   },
   header: {
-    padding: spacing.md,
+    padding: 16,
     backgroundColor: colors.white,
     borderBottomWidth: 1,
     borderBottomColor: colors.lightGray,
@@ -23,28 +22,28 @@ export default StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.lightGray,
-    borderRadius: borderRadius.medium,
-    paddingHorizontal: spacing.md,
-    marginBottom: spacing.md,
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    marginBottom: 16,
   },
   searchIcon: {
-    marginRight: spacing.sm,
+    marginRight: 8,
   },
   searchInput: {
     flex: 1,
-    paddingVertical: spacing.sm,
+    paddingVertical: 8,
     fontSize: 16,
   },
   filterContainer: {
     flexDirection: 'row',
-    marginBottom: spacing.md,
+    marginBottom: 16,
   },
   filterChip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.round,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
     backgroundColor: colors.lightGray,
-    marginRight: spacing.sm,
+    marginRight: 8,
   },
   filterChipActive: {
     backgroundColor: colors.primary,
@@ -61,9 +60,9 @@ export default StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.secondary,
-    padding: spacing.md,
-    borderRadius: borderRadius.medium,
-    gap: spacing.sm,
+    padding: 16,
+    borderRadius: 8,
+    gap: 8,
   },
   scannerButtonText: {
     color: colors.white,
@@ -71,18 +70,18 @@ export default StyleSheet.create({
     fontWeight: 'bold',
   },
   listContent: {
-    padding: spacing.md,
+    padding: 16,
   },
   emptyText: {
     fontSize: 18,
     fontWeight: 'bold',
     color: colors.gray,
-    marginTop: spacing.md,
+    marginTop: 16,
   },
   emptySubtext: {
     fontSize: 14,
     color: colors.gray,
-    marginTop: spacing.sm,
+    marginTop: 8,
     textAlign: 'center',
   },
   errorText: {
@@ -108,10 +107,10 @@ export default StyleSheet.create({
   },
   actionButtons: {
     position: 'absolute',
-    top: spacing.md,
-    right: spacing.md,
+    top: 16,
+    right: 16,
     flexDirection: 'row',
-    gap: spacing.sm,
+    gap: 8,
   },
   actionButton: {
     backgroundColor: 'rgba(0,0,0,0.5)',
@@ -122,58 +121,58 @@ export default StyleSheet.create({
     alignItems: 'center',
   },
   detailContent: {
-    padding: spacing.lg,
+    padding: 24,
   },
   detailTitle: {
     fontSize: 24,
     fontWeight: 'bold',
     color: colors.black,
-    marginBottom: spacing.md,
+    marginBottom: 16,
   },
   detailInfoRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginBottom: spacing.md,
+    marginBottom: 16,
   },
   detailInfoItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginRight: spacing.lg,
-    marginBottom: spacing.sm,
+    marginRight: 24,
+    marginBottom: 8,
   },
   detailInfoText: {
     fontSize: 14,
     color: colors.gray,
-    marginLeft: spacing.xs,
+    marginLeft: 4,
   },
   description: {
     fontSize: 16,
     color: colors.gray,
     lineHeight: 24,
-    marginBottom: spacing.lg,
+    marginBottom: 24,
   },
   section: {
-    marginTop: spacing.lg,
+    marginTop: 24,
   },
   sectionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: colors.black,
-    marginBottom: spacing.md,
+    marginBottom: 16,
   },
   ingredientRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.sm,
+    marginBottom: 8,
   },
   ingredientText: {
     fontSize: 16,
     color: colors.black,
-    marginLeft: spacing.sm,
+    marginLeft: 8,
   },
   instructionRow: {
     flexDirection: 'row',
-    marginBottom: spacing.md,
+    marginBottom: 16,
   },
   stepNumber: {
     width: 28,
@@ -182,7 +181,7 @@ export default StyleSheet.create({
     backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: spacing.md,
+    marginRight: 12,
   },
   stepNumberText: {
     color: colors.white,

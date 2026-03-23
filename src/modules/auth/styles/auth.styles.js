@@ -1,45 +1,40 @@
 import { StyleSheet } from 'react-native';
 import colors from '../../shared/constants/colors';
-import { spacing, typography } from '../../shared/constants/theme';
 
 export default StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.white,
-    padding: spacing.lg,
+    padding: 20,
     justifyContent: 'center',
   },
-  header: {
-    alignItems: 'center',
-    marginBottom: spacing.xl,
-  },
   title: {
-    ...typography.h1,
+    fontSize: 32,
+    fontWeight: 'bold',
     color: colors.primary,
+    textAlign: 'center',
+    marginBottom: 10,
   },
   subtitle: {
-    ...typography.body,
+    fontSize: 18,
     color: colors.gray,
-    marginTop: spacing.sm,
-  },
-  form: {
-    width: '100%',
+    textAlign: 'center',
+    marginBottom: 40,
   },
   input: {
     borderWidth: 1,
     borderColor: colors.lightGray,
     borderRadius: 10,
-    padding: spacing.md,
-    marginBottom: spacing.md,
+    padding: 15,
+    marginBottom: 15,
     fontSize: 16,
-    backgroundColor: colors.white,
   },
   button: {
     backgroundColor: colors.primary,
-    padding: spacing.md,
+    padding: 15,
     borderRadius: 10,
     alignItems: 'center',
-    marginTop: spacing.md,
+    marginTop: 10,
   },
   buttonText: {
     color: colors.white,
@@ -49,12 +44,7 @@ export default StyleSheet.create({
   link: {
     color: colors.primary,
     textAlign: 'center',
-    marginTop: spacing.lg,
+    marginTop: 20,
     fontSize: 14,
-  },
-  errorText: {
-    color: colors.error,
-    textAlign: 'center',
-    marginBottom: spacing.md,
   },
 });

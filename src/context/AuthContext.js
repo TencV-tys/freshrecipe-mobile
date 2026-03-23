@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import * as SecureStore from 'expo-secure-store';
+import SecureStorage from '../services/secureStorage';
 import api from '../api/api';
 
 const AuthContext = createContext();
@@ -16,13 +16,13 @@ export const AuthProvider = ({ children }) => {
 
   const checkAuth = async () => {
     try {
-      const token = await SecureStore.getItemAsync('auth_token');
+      const token = await SecureStorage.getToken();
       if (token) {
         const response = await api.get('/users/profile');
         if (response.data && response.data.role !== 'admin') {
           setUser(response.data);
         } else {
-          await SecureStore.deleteItemAsync('auth_token');
+          await SecureStorage.removeToken();
         }
       }
     } catch (error) {
@@ -41,9 +41,8 @@ export const AuthProvider = ({ children }) => {
         return { success: false, error: 'This app is for users only' };
       }
       
-      await SecureStore.setItemAsync('auth_token', token);
+      await SecureStorage.storeToken(token);
       setUser(userData);
-      
       return { success: true, user: userData };
     } catch (error) {
       return {
@@ -53,14 +52,14 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Add register function
   const register = async (userData) => {
     try {
       const response = await api.post('/auth/register', userData);
       const { token, ...user } = response.data;
       
-      await SecureStore.setItemAsync('auth_token', token);
+      await SecureStorage.storeToken(token);
       setUser(user);
-      
       return { success: true, user };
     } catch (error) {
       return {
@@ -71,7 +70,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = async () => {
-    await SecureStore.deleteItemAsync('auth_token');
+    await SecureStorage.removeToken();
     setUser(null);
   };
 
@@ -87,18 +86,14 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        login,
-        register,
-        logout,
-        toggleSaveRecipe,
-        loading,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
+  const value = {
+    user,
+    login,
+    register,
+    logout,
+    toggleSaveRecipe,
+    loading,
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

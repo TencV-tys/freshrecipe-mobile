@@ -1,6 +1,5 @@
 import { StyleSheet } from 'react-native';
 import colors from '../../shared/constants/colors';
-import { spacing, typography } from '../../shared/constants/theme';
 
 export default StyleSheet.create({
   container: {
@@ -9,46 +8,45 @@ export default StyleSheet.create({
   },
   hero: {
     backgroundColor: colors.primary,
-    padding: spacing.xl,
+    padding: 40,
     alignItems: 'center',
   },
   heroTitle: {
-    ...typography.h1,
+    fontSize: 32,
+    fontWeight: 'bold',
     color: colors.white,
     textAlign: 'center',
   },
   heroSubtitle: {
-    ...typography.body,
+    fontSize: 16,
     color: colors.white,
     textAlign: 'center',
-    marginTop: spacing.sm,
+    marginTop: 10,
   },
   features: {
-    padding: spacing.lg,
+    padding: 20,
   },
   featureCard: {
     backgroundColor: colors.white,
     borderRadius: 12,
-    padding: spacing.lg,
-    marginBottom: spacing.md,
+    padding: 20,
+    marginBottom: 16,
     alignItems: 'center',
-    ...styles.shadow,
-  },
-  featureTitle: {
-    ...typography.h3,
-    marginTop: spacing.md,
-  },
-  featureText: {
-    ...typography.body,
-    color: colors.gray,
-    textAlign: 'center',
-    marginTop: spacing.sm,
-  },
-  shadow: {
     shadowColor: colors.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+  },
+  featureTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginTop: 12,
+  },
+  featureText: {
+    fontSize: 14,
+    color: colors.gray,
+    textAlign: 'center',
+    marginTop: 8,
   },
 });
