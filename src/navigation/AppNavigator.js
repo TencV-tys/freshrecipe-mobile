@@ -23,23 +23,32 @@ const Stack = createStackNavigator();
 const RecipeStack = () => {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="RecipeFinder" component={RecipeFinderScreen} />
-      <Stack.Screen name="RecipeDetail" component={RecipeDetailScreen} />
-      <Stack.Screen name="SavedRecipes" component={SavedRecipesScreen} />
+      <Stack.Screen name="RecipeFinderMain" component={RecipeFinderScreen} />
+      <Stack.Screen name="RecipeDetailMain" component={RecipeDetailScreen} />
+      <Stack.Screen name="SavedRecipesMain" component={SavedRecipesScreen} />
     </Stack.Navigator>
   );
 };
 
-// User Stack Navigator
-const UserStack = () => {
+// Profile Stack Navigator - Separate from Dashboard
+const ProfileStack = () => {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="Dashboard" component={DashboardScreen} />
-      <Stack.Screen name="Profile" component={ProfileScreen} />
-      <Stack.Screen name="Settings" component={SettingsScreen} />
-      <Stack.Screen name="EditProfile" component={EditProfileScreen} />
-      <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
-      <Stack.Screen name="SavedRecipes" component={SavedRecipesScreen} />
+      <Stack.Screen name="ProfileMain" component={ProfileScreen} />
+      <Stack.Screen name="EditProfileMain" component={EditProfileScreen} />
+      <Stack.Screen name="ChangePasswordMain" component={ChangePasswordScreen} />
+      <Stack.Screen name="SettingsMain" component={SettingsScreen} />
+      <Stack.Screen name="SavedRecipesFromProfile" component={SavedRecipesScreen} />
+    </Stack.Navigator>
+  );
+};
+
+// Dashboard Stack Navigator
+const DashboardStack = () => {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="DashboardMain" component={DashboardScreen} />
+      <Stack.Screen name="SavedRecipesFromDashboard" component={SavedRecipesScreen} />
     </Stack.Navigator>
   );
 };
@@ -48,7 +57,7 @@ const UserStack = () => {
 const ChatbotStack = () => {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="Chatbot" component={ChatbotScreen} />
+      <Stack.Screen name="ChatbotMain" component={ChatbotScreen} />
     </Stack.Navigator>
   );
 };
@@ -79,9 +88,9 @@ const AppNavigator = () => {
     >
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Find" component={RecipeStack} />
-      <Tab.Screen name="Saved" component={UserStack} />
+      <Tab.Screen name="Saved" component={DashboardStack} />
       <Tab.Screen name="Chat" component={ChatbotStack} />
-      <Tab.Screen name="Profile" component={UserStack} />
+      <Tab.Screen name="Profile" component={ProfileStack} />
     </Tab.Navigator>
   );
 };

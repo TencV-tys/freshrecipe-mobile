@@ -52,7 +52,6 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Add register function
   const register = async (userData) => {
     try {
       const response = await api.post('/auth/register', userData);
@@ -86,8 +85,14 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // ✅ Add this function to update user data
+  const updateUser = (updatedUser) => {
+    setUser(updatedUser);
+  };
+
   const value = {
     user,
+    setUser: updateUser,  // ✅ Expose setUser as updateUser
     login,
     register,
     logout,
@@ -95,5 +100,9 @@ export const AuthProvider = ({ children }) => {
     loading,
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
 };
