@@ -4,7 +4,7 @@ import SecureStorage from '../services/secureStorage';
 // Get your computer's IP address
 // Mac: ipconfig getifaddr en0
 // Windows: ipconfig | findstr "IPv4"
-const IP = '192.168.1.100'; // CHANGE THIS TO YOUR IP
+const IP = '10.205.101.2'; // CHANGE THIS TO YOUR IP
 const API_URL = `http://${IP}:5000/api`;
 
 console.log('API URL:', API_URL);
