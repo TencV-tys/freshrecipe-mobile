@@ -73,42 +73,37 @@ const IngredientScanner = ({ onClose, onScanComplete }) => {
     }
   };
 
-  // Detect ingredients from image
-  const detectIngredients = async (imageUri) => {
-    setStep('scanning');
-    setLoading(true);
+  // In the detectIngredients function, replace with:
+const detectIngredients = async (imageUri) => {
+  setStep('scanning');
+  setLoading(true);
+  
+  try {
+    // Create form data
+    const formData = new FormData();
+    formData.append('image', {
+      uri: imageUri,
+      type: 'image/jpeg',
+      name: 'scan.jpg',
+    });
     
-    try {
-      // In production, send to backend AI service
-      // For now, simulate detection with random ingredients
-      
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Randomly select 3-6 ingredients from common list
-      const shuffled = [...COMMON_INGREDIENTS];
-      for (let i = shuffled.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-      }
-      const detected = shuffled.slice(0, Math.floor(Math.random() * 6) + 3);
-      
-      const detectedWithConfidence = detected.map(ing => ({
-        name: ing,
-        confidence: 0.6 + Math.random() * 0.3
-      }));
-      
-      setDetectedIngredients(detectedWithConfidence);
-      setSelectedIngredients(detectedWithConfidence.map(ing => ing.name));
-      setStep('results');
-    } catch (error) {
-      console.error('Detection error:', error);
-      Alert.alert('Error', 'Failed to detect ingredients. Please try again.');
-      setStep('select');
-    } finally {
-      setLoading(false);
-    }
-  };
+    // Call your backend scan endpoint
+    const response = await api.post('/recipes/scan', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    
+    setDetectedIngredients(response.data.detected);
+    setSelectedIngredients(response.data.detected.map(i => i.name));
+    setSuggestedRecipes(response.data.recipes);
+    setStep('results');
+  } catch (error) {
+    console.error('Detection error:', error);
+    Alert.alert('Error', 'Failed to detect ingredients');
+    setStep('select');
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Find recipes with selected ingredients
   const findRecipes = async () => {
