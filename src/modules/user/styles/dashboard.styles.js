@@ -1,19 +1,10 @@
-import { StyleSheet, Platform, StatusBar } from 'react-native';
+import { StyleSheet } from 'react-native';
 import colors from '../../shared/constants/colors';
-
-const statusBarHeight = Platform.OS === 'android' ? StatusBar.currentHeight : 44;
 
 export default StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.white,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    paddingBottom: 30,
   },
   centerContainer: {
     flex: 1,
@@ -21,15 +12,21 @@ export default StyleSheet.create({
     alignItems: 'center',
   },
   loadingText: {
+    marginTop: 12,
     fontSize: 14,
     color: colors.gray,
-    marginTop: 12,
   },
-  welcomeSection: {
-    paddingTop: statusBarHeight + 20,
+  welcomeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 20,
+    paddingTop: 16,
     paddingBottom: 20,
     backgroundColor: colors.white,
+  },
+  welcomeTextContainer: {
+    flex: 1,
   },
   welcomeText: {
     fontSize: 16,
@@ -46,9 +43,34 @@ export default StyleSheet.create({
     color: colors.gray,
     marginTop: 8,
   },
+  avatarContainer: {
+    marginLeft: 16,
+  },
+  profileAvatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    borderWidth: 2,
+    borderColor: colors.primary,
+  },
+  profileAvatarPlaceholder: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: colors.white,
+  },
+  profileAvatarText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: colors.white,
+  },
   statsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    justifyContent: 'center',
     paddingHorizontal: 16,
     marginBottom: 24,
   },
@@ -56,7 +78,7 @@ export default StyleSheet.create({
     flex: 1,
     backgroundColor: colors.white,
     borderRadius: 16,
-    padding: 16,
+    padding: 20,
     alignItems: 'center',
     marginHorizontal: 6,
     shadowColor: colors.black,
@@ -66,24 +88,70 @@ export default StyleSheet.create({
     elevation: 2,
     borderWidth: 1,
     borderColor: colors.lightGray,
+    maxWidth: '50%',
   },
   statIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
   },
   statValue: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
-    color: colors.black,
+    color: colors.primary,
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: 14,
     color: colors.gray,
     marginTop: 4,
+  },
+  featuresSection: {
+    paddingHorizontal: 16,
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: colors.black,
+    marginBottom: 16,
+  },
+  featuresRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 12,
+  },
+  featuresColumn: {
+    flex: 1,
+  },
+  featureCard: {
+    backgroundColor: colors.white,
+    borderRadius: 16,
+    padding: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.lightGray,
+  },
+  featureIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  featureTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: colors.black,
+    marginBottom: 4,
+  },
+  featureDescription: {
+    fontSize: 12,
+    color: colors.gray,
+    textAlign: 'center',
   },
   section: {
     paddingHorizontal: 16,
@@ -94,11 +162,6 @@ export default StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: colors.black,
   },
   seeAllText: {
     fontSize: 14,
@@ -124,6 +187,6 @@ export default StyleSheet.create({
     textAlign: 'center',
   },
   bottomPadding: {
-    height: 20,
+    height: 30,
   },
 });

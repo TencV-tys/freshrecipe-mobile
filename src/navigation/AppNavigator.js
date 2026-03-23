@@ -22,7 +22,7 @@ import TermsOfServiceScreen from '../modules/user/screens/TermsOfServiceScreen';
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
 
-// Recipe Stack Navigator
+// Recipe Stack Navigator (Scan tab)
 const RecipeStack = () => {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
@@ -32,7 +32,7 @@ const RecipeStack = () => {
   );
 };
 
-// Dashboard Stack Navigator - Dashboard is the main screen
+// Dashboard Stack Navigator
 const DashboardStack = () => {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
@@ -80,8 +80,8 @@ const AppNavigator = () => {
           let iconName;
           if (route.name === 'Home') {
             iconName = focused ? 'home' : 'home-outline';
-          } else if (route.name === 'Find') {
-            iconName = focused ? 'search' : 'search-outline';
+          } else if (route.name === 'Scan') {
+            iconName = focused ? 'camera' : 'camera-outline';
           } else if (route.name === 'Dashboard') {
             iconName = focused ? 'grid' : 'grid-outline';
           } else if (route.name === 'Chat') {
@@ -97,7 +97,7 @@ const AppNavigator = () => {
       })}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Find" component={RecipeStack} />
+      <Tab.Screen name="Scan" component={RecipeStack} />
       <Tab.Screen name="Dashboard" component={DashboardStack} />
       <Tab.Screen name="Chat" component={ChatbotStack} />
       <Tab.Screen name="Profile" component={ProfileStack} />
