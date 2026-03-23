@@ -13,18 +13,10 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import Icon from 'react-native-vector-icons/Ionicons';
-import colors from '../../shared/constants/colors';
 import api from '../../../api/api';
+import colors from '../../shared/constants/colors';
 
-// Common ingredients for mock detection (in real app, send to AI service)
-const COMMON_INGREDIENTS = [
-  'chicken', 'pork', 'beef', 'fish', 'shrimp', 'garlic', 'onion', 'tomato',
-  'ginger', 'rice', 'noodles', 'soy sauce', 'vinegar', 'coconut milk',
-  'egg', 'potato', 'carrot', 'bell pepper', 'cabbage', 'spinach',
-  'adobo', 'sinigang', 'calamansi', 'patis', 'bagoong', 'toyo'
-];
-
-const IngredientScanner = ({ onClose, onScanComplete }) => {
+const IngredientScanner = ({ onClose, onScanComplete, navigation }) => {
   const [step, setStep] = useState('select'); // select, scanning, results
   const [capturedImage, setCapturedImage] = useState(null);
   const [detectedIngredients, setDetectedIngredients] = useState([]);
@@ -73,37 +65,37 @@ const IngredientScanner = ({ onClose, onScanComplete }) => {
     }
   };
 
-  // In the detectIngredients function, replace with:
-const detectIngredients = async (imageUri) => {
-  setStep('scanning');
-  setLoading(true);
-  
-  try {
-    // Create form data
-    const formData = new FormData();
-    formData.append('image', {
-      uri: imageUri,
-      type: 'image/jpeg',
-      name: 'scan.jpg',
-    });
+  // Detect ingredients from image using backend
+  const detectIngredients = async (imageUri) => {
+    setStep('scanning');
+    setLoading(true);
     
-    // Call your backend scan endpoint
-    const response = await api.post('/recipes/scan', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-    
-    setDetectedIngredients(response.data.detected);
-    setSelectedIngredients(response.data.detected.map(i => i.name));
-    setSuggestedRecipes(response.data.recipes);
-    setStep('results');
-  } catch (error) {
-    console.error('Detection error:', error);
-    Alert.alert('Error', 'Failed to detect ingredients');
-    setStep('select');
-  } finally {
-    setLoading(false);
-  }
-};
+    try {
+      // Create form data
+      const formData = new FormData();
+      formData.append('image', {
+        uri: imageUri,
+        type: 'image/jpeg',
+        name: 'scan.jpg',
+      });
+      
+      // Call backend scan endpoint
+      const response = await api.post('/recipes/scan', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      
+      setDetectedIngredients(response.data.detected);
+      setSelectedIngredients(response.data.detected.map(i => i.name));
+      setSuggestedRecipes(response.data.recipes);
+      setStep('results');
+    } catch (error) {
+      console.error('Detection error:', error);
+      Alert.alert('Error', 'Failed to detect ingredients. Please try again.');
+      setStep('select');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Find recipes with selected ingredients
   const findRecipes = async () => {
@@ -159,7 +151,7 @@ const detectIngredients = async (imageUri) => {
           <Icon name="camera-outline" size={64} color={colors.primary} />
           <Text style={styles.title}>Scan Ingredients</Text>
           <Text style={styles.subtitle}>
-            Take a photo or upload an image to detect ingredients
+            Take a photo or upload an image to detect ingredients using AI
           </Text>
         </View>
 
@@ -199,7 +191,7 @@ const detectIngredients = async (imageUri) => {
           )}
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.scanningText}>Analyzing image...</Text>
-          <Text style={styles.scanningSubtext}>Detecting ingredients</Text>
+          <Text style={styles.scanningSubtext}>Detecting ingredients with AI</Text>
         </View>
       </View>
     );
@@ -235,7 +227,7 @@ const detectIngredients = async (imageUri) => {
                   styles.ingredientText,
                   selectedIngredients.includes(ing.name) && styles.ingredientTextSelected
                 ]}>
-                  {ing.name} ({Math.round(ing.confidence * 100)}%)
+                  {ing.name} ({ing.confidence}%)
                 </Text>
               </TouchableOpacity>
             ))}
@@ -303,7 +295,6 @@ const detectIngredients = async (imageUri) => {
                     onPress={() => {
                       onScanComplete(selectedIngredients);
                       onClose();
-                      // Navigate to recipe detail
                       navigation?.navigate('RecipeDetail', { recipeId: item.id });
                     }}
                   >
