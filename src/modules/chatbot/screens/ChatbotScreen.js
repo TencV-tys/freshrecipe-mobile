@@ -9,31 +9,14 @@ import {
   Platform,
   ActivityIndicator,
   StatusBar,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import Icon from 'react-native-vector-icons/Ionicons';
+import ChatbotService from '../services/chatbot.service';
 import colors from '../../shared/constants/colors';
-
-// Simple mock responses
-const getMockResponse = (message) => {
-  const lowerMsg = message.toLowerCase();
-  
-  if (lowerMsg.includes('recipe') || lowerMsg.includes('cook')) {
-    return "I can help you find recipes! Try scanning ingredients or searching by name. What would you like to cook?";
-  } else if (lowerMsg.includes('ingredient')) {
-    return "You can scan ingredients using the camera in the Find Recipes screen. It will suggest recipes based on what you have!";
-  } else if (lowerMsg.includes('save') || lowerMsg.includes('favorite')) {
-    return "You can save recipes by tapping the bookmark icon on any recipe card. Your saved recipes appear in the Dashboard tab.";
-  } else if (lowerMsg.includes('adobo') || lowerMsg.includes('sinigang')) {
-    return `Filipino dishes are amazing! ${message.charAt(0).toUpperCase() + message.slice(1)} is a classic. Would you like me to help you find a recipe for it?`;
-  } else if (lowerMsg.includes('hello') || lowerMsg.includes('hi')) {
-    return "Hello! I'm your cooking assistant. I can help you find recipes, answer cooking questions, or suggest dishes based on your ingredients. How can I help you today?";
-  } else if (lowerMsg.includes('help')) {
-    return "Here's what I can help with:\n🔍 Find recipes by name\n📸 Scan ingredients with camera\n💾 Save favorite recipes\n🍽️ Get cooking tips\n🇵🇭 Discover Filipino dishes\n\nJust ask me anything!";
-  } else {
-    return "That's interesting! I'm here to help with recipes and cooking. Try asking me about a specific dish, ingredients you have, or cooking tips!";
-  }
-};
 
 const ChatbotScreen = () => {
   const [messages, setMessages] = useState([
@@ -47,13 +30,14 @@ const ChatbotScreen = () => {
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const flatListRef = useRef();
+  const tabBarHeight = useBottomTabBarHeight();
 
   const suggestions = [
-    'Find chicken adobo recipe',
+    'How to make chicken adobo?',
     'What can I cook with eggs?',
     'Healthy Filipino dishes',
-    'How to save recipes',
-    'What are the ingredients for sinigang?',
+    'How to save recipes?',
+    'What is sinigang?',
     'Cooking tips for beginners',
   ];
 
@@ -80,19 +64,19 @@ const ChatbotScreen = () => {
     setMessages(prev => [...prev, userMessage]);
     setInputText('');
     setIsTyping(true);
+    scrollToBottom();
 
-    // Simulate API call delay
-    setTimeout(() => {
-      const response = getMockResponse(inputText);
-      const botMessage = {
-        id: (Date.now() + 1).toString(),
-        text: response,
-        isUser: false,
-        timestamp: new Date(),
-      };
-      setMessages(prev => [...prev, botMessage]);
-      setIsTyping(false);
-    }, 800);
+    const result = await ChatbotService.sendMessage(inputText);
+    
+    const botMessage = {
+      id: (Date.now() + 1).toString(),
+      text: result.reply,
+      isUser: false,
+      timestamp: new Date(),
+    };
+    setMessages(prev => [...prev, botMessage]);
+    setIsTyping(false);
+    scrollToBottom();
   };
 
   const renderMessage = ({ item }) => (
@@ -144,46 +128,51 @@ const ChatbotScreen = () => {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
-        <View style={styles.messagesContainer}>
-          <FlatList
-            ref={flatListRef}
-            data={messages}
-            renderItem={renderMessage}
-            keyExtractor={item => item.id}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.messagesList}
-            ListHeaderComponent={
-              messages.length === 1 ? (
-                <View style={styles.suggestionsContainer}>
-                  <Text style={styles.suggestionsTitle}>Try asking:</Text>
-                  <View style={styles.suggestionsList}>
-                    {suggestions.map(renderSuggestion)}
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={styles.innerContainer}>
+            <FlatList
+              ref={flatListRef}
+              data={messages}
+              renderItem={renderMessage}
+              keyExtractor={item => item.id}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.messagesList}
+              onLayout={scrollToBottom}
+              ListHeaderComponent={
+                messages.length === 1 ? (
+                  <View style={styles.suggestionsContainer}>
+                    <Text style={styles.suggestionsTitle}>Try asking:</Text>
+                    <View style={styles.suggestionsList}>
+                      {suggestions.map(renderSuggestion)}
+                    </View>
                   </View>
-                </View>
-              ) : null
-            }
-            ListFooterComponent={isTyping ? renderTypingIndicator : null}
-          />
-        </View>
-
-        <View style={styles.inputContainer}>
-          <TextInput
-            style={styles.input}
-            placeholder="Ask me anything about cooking..."
-            placeholderTextColor={colors.gray}
-            value={inputText}
-            onChangeText={setInputText}
-            multiline
-            maxLength={500}
-          />
-          <TouchableOpacity
-            style={[styles.sendButton, !inputText.trim() && styles.sendButtonDisabled]}
-            onPress={handleSend}
-            disabled={!inputText.trim() || isTyping}
-          >
-            <Icon name="send" size={20} color={colors.white} />
-          </TouchableOpacity>
-        </View>
+                ) : null
+              }
+              ListFooterComponent={isTyping ? renderTypingIndicator : null}
+            />
+            
+            <View style={[styles.inputContainer, { paddingBottom: tabBarHeight + 10 }]}>
+              <TextInput
+                style={styles.input}
+                placeholder="Ask me anything about cooking..."
+                placeholderTextColor={colors.gray}
+                value={inputText}
+                onChangeText={setInputText}
+                multiline
+                maxLength={500}
+                returnKeyType="send"
+                onSubmitEditing={handleSend}
+              />
+              <TouchableOpacity
+                style={[styles.sendButton, !inputText.trim() && styles.sendButtonDisabled]}
+                onPress={handleSend}
+                disabled={!inputText.trim() || isTyping}
+              >
+                <Icon name="send" size={20} color={colors.white} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -213,7 +202,7 @@ const styles = {
   keyboardView: {
     flex: 1,
   },
-  messagesContainer: {
+  innerContainer: {
     flex: 1,
   },
   messagesList: {
@@ -221,7 +210,7 @@ const styles = {
     paddingBottom: 20,
   },
   messageBubble: {
-    maxWidth: '80%',
+    maxWidth: '85%',
     padding: 14,
     borderRadius: 20,
     marginBottom: 12,
@@ -256,7 +245,7 @@ const styles = {
     borderTopWidth: 1,
     borderTopColor: colors.lightGray,
     backgroundColor: colors.white,
-    alignItems: 'flex-end',
+    alignItems: 'center',
   },
   input: {
     flex: 1,
