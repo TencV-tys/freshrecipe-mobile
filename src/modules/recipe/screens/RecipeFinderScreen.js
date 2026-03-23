@@ -9,12 +9,15 @@ import {
   ActivityIndicator,
   RefreshControl,
   Modal,
+  StatusBar,
+  Keyboard,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import RecipeService from '../services/recipe.service';
 import RecipeCard from '../components/RecipeCard';
 import IngredientScanner from '../components/IngredientScanner';
-import styles from '../styles/recipe.styles';
+import styles from '../styles/recipeFinder.styles';
 import colors from '../../shared/constants/colors';
 
 const RecipeFinderScreen = ({ navigation }) => {
@@ -24,7 +27,6 @@ const RecipeFinderScreen = ({ navigation }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMealType, setSelectedMealType] = useState('');
   const [showScanner, setShowScanner] = useState(false);
-  const [scannedIngredients, setScannedIngredients] = useState([]);
 
   const mealTypes = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
 
@@ -51,13 +53,17 @@ const RecipeFinderScreen = ({ navigation }) => {
   };
 
   const handleScanComplete = async (ingredients) => {
-    setScannedIngredients(ingredients);
     setLoading(true);
     const result = await RecipeService.findRecipesByIngredients(ingredients);
     if (result.success) {
       setRecipes(result.recipes);
     }
     setLoading(false);
+  };
+
+  const clearSearch = () => {
+    setSearchQuery('');
+    Keyboard.dismiss();
   };
 
   const renderHeader = () => (
@@ -67,17 +73,25 @@ const RecipeFinderScreen = ({ navigation }) => {
         <TextInput
           style={styles.searchInput}
           placeholder="Search recipes..."
+          placeholderTextColor={colors.gray}
           value={searchQuery}
           onChangeText={setSearchQuery}
+          returnKeyType="search"
+          onSubmitEditing={() => fetchRecipes()}
         />
         {searchQuery ? (
-          <TouchableOpacity onPress={() => setSearchQuery('')}>
+          <TouchableOpacity onPress={clearSearch}>
             <Icon name="close-circle" size={20} color={colors.gray} />
           </TouchableOpacity>
         ) : null}
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterContainer}>
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false} 
+        style={styles.filterContainer}
+        contentContainerStyle={styles.filterContent}
+      >
         <TouchableOpacity
           style={[styles.filterChip, !selectedMealType && styles.filterChipActive]}
           onPress={() => setSelectedMealType('')}
@@ -104,44 +118,75 @@ const RecipeFinderScreen = ({ navigation }) => {
     </View>
   );
 
-  return (
-    <View style={styles.container}>
-      {renderHeader()}
+  const renderEmptyState = () => (
+    <View style={styles.centerContainer}>
+      <Icon name="restaurant-outline" size={64} color={colors.gray} />
+      <Text style={styles.emptyText}>No recipes found</Text>
+      <Text style={styles.emptySubtext}>
+        {searchQuery || selectedMealType 
+          ? 'Try adjusting your search or filters' 
+          : 'Start by searching for recipes or scanning ingredients'}
+      </Text>
+    </View>
+  );
 
-      {loading ? (
+  const renderContent = () => {
+    if (loading) {
+      return (
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>Loading recipes...</Text>
         </View>
-      ) : recipes.length === 0 ? (
-        <View style={styles.centerContainer}>
-          <Icon name="restaurant-outline" size={64} color={colors.gray} />
-          <Text style={styles.emptyText}>No recipes found</Text>
-          <Text style={styles.emptySubtext}>Try searching for something else</Text>
-        </View>
-      ) : (
-        <FlatList
-          data={recipes}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={({ item }) => (
-            <RecipeCard
-              recipe={item}
-              onPress={() => navigation.navigate('RecipeDetail', { recipeId: item.id })}
-            />
-          )}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />
-          }
-          contentContainerStyle={styles.listContent}
-        />
-      )}
+      );
+    }
 
-      <Modal visible={showScanner} animationType="slide" presentationStyle="fullScreen">
+    if (recipes.length === 0) {
+      return renderEmptyState();
+    }
+
+    return (
+      <FlatList
+        data={recipes}
+        keyExtractor={(item) => item.id?.toString() || item._id?.toString()}
+        renderItem={({ item }) => (
+          <RecipeCard
+            recipe={item}
+            onPress={() => navigation.navigate('RecipeDetail', { recipeId: item.id || item._id })}
+          />
+        )}
+        refreshControl={
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={onRefresh} 
+            colors={[colors.primary]}
+            tintColor={colors.primary}
+          />
+        }
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+      />
+    );
+  };
+
+  return (
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <StatusBar barStyle="dark-content" backgroundColor={colors.white} />
+      {renderHeader()}
+      {renderContent()}
+
+      <Modal 
+        visible={showScanner} 
+        animationType="slide" 
+        presentationStyle="fullScreen"
+        statusBarTranslucent
+      >
         <IngredientScanner
           onClose={() => setShowScanner(false)}
           onScanComplete={handleScanComplete}
+          navigation={navigation}
         />
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 };
 

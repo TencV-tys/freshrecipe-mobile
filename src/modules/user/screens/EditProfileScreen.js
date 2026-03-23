@@ -9,7 +9,9 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
+  StatusBar,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useAuth } from '../../../context/AuthContext';
@@ -122,78 +124,98 @@ const EditProfileScreen = ({ navigation }) => {
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.avatarContainer}>
-        <TouchableOpacity onPress={pickImage} disabled={uploadingAvatar}>
-          {uploadingAvatar ? (
-            <View style={styles.avatarPlaceholder}>
-              <ActivityIndicator size="large" color={colors.white} />
-            </View>
-          ) : avatar ? (
-            <Image 
-              source={{ uri: avatar.startsWith('http') ? avatar : `http://10.205.101.2:5000${avatar}` }} 
-              style={styles.avatar} 
-            />
-          ) : (
-            <View style={styles.avatarPlaceholder}>
-              <Icon name="camera" size={32} color={colors.white} />
-            </View>
-          )}
-          <View style={styles.editAvatarIcon}>
-            <Icon name="pencil" size={16} color={colors.white} />
-          </View>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <StatusBar barStyle="dark-content" backgroundColor={colors.white} />
+      
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Icon name="arrow-back" size={24} color={colors.black} />
         </TouchableOpacity>
-        <Text style={styles.avatarHint}>Tap to change photo</Text>
+        <Text style={styles.headerTitle}>Edit Profile</Text>
+        <View style={styles.placeholder} />
       </View>
 
-      <View style={styles.formGroup}>
-        <Text style={styles.label}>Username</Text>
-        <TextInput
-          style={styles.input}
-          value={formData.username}
-          onChangeText={(text) => setFormData({ ...formData, username: text })}
-          placeholder="Username"
-        />
-      </View>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Avatar Section */}
+        <View style={styles.avatarContainer}>
+          <TouchableOpacity onPress={pickImage} disabled={uploadingAvatar}>
+            {uploadingAvatar ? (
+              <View style={styles.avatarPlaceholder}>
+                <ActivityIndicator size="large" color={colors.white} />
+              </View>
+            ) : avatar ? (
+              <Image 
+                source={{ uri: avatar.startsWith('http') ? avatar : `http://10.205.101.2:5000${avatar}` }} 
+                style={styles.avatar} 
+              />
+            ) : (
+              <View style={styles.avatarPlaceholder}>
+                <Icon name="camera" size={32} color={colors.white} />
+              </View>
+            )}
+            <View style={styles.editAvatarIcon}>
+              <Icon name="pencil" size={16} color={colors.white} />
+            </View>
+          </TouchableOpacity>
+          <Text style={styles.avatarHint}>Tap to change photo</Text>
+        </View>
 
-      <View style={styles.formGroup}>
-        <Text style={styles.label}>Email</Text>
-        <TextInput
-          style={styles.input}
-          value={formData.email}
-          onChangeText={(text) => setFormData({ ...formData, email: text })}
-          placeholder="Email"
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
-      </View>
-
-      <View style={styles.row}>
-        <View style={[styles.formGroup, styles.halfWidth]}>
-          <Text style={styles.label}>First Name</Text>
+        {/* Form Fields */}
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>Username</Text>
           <TextInput
             style={styles.input}
-            value={formData.firstName}
-            onChangeText={(text) => setFormData({ ...formData, firstName: text })}
-            placeholder="First Name"
+            value={formData.username}
+            onChangeText={(text) => setFormData({ ...formData, username: text })}
+            placeholder="Username"
+            placeholderTextColor={colors.gray}
           />
         </View>
 
-        <View style={[styles.formGroup, styles.halfWidth]}>
-          <Text style={styles.label}>Last Name</Text>
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>Email</Text>
           <TextInput
             style={styles.input}
-            value={formData.lastName}
-            onChangeText={(text) => setFormData({ ...formData, lastName: text })}
-            placeholder="Last Name"
+            value={formData.email}
+            onChangeText={(text) => setFormData({ ...formData, email: text })}
+            placeholder="Email"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            placeholderTextColor={colors.gray}
           />
         </View>
-      </View>
 
-      <TouchableOpacity style={styles.saveButton} onPress={handleSave} disabled={loading}>
-        {loading ? <ActivityIndicator color={colors.white} /> : <Text style={styles.saveButtonText}>Save Changes</Text>}
-      </TouchableOpacity>
-    </ScrollView>
+        <View style={styles.row}>
+          <View style={[styles.formGroup, styles.halfWidth]}>
+            <Text style={styles.label}>First Name</Text>
+            <TextInput
+              style={styles.input}
+              value={formData.firstName}
+              onChangeText={(text) => setFormData({ ...formData, firstName: text })}
+              placeholder="First Name"
+              placeholderTextColor={colors.gray}
+            />
+          </View>
+
+          <View style={[styles.formGroup, styles.halfWidth]}>
+            <Text style={styles.label}>Last Name</Text>
+            <TextInput
+              style={styles.input}
+              value={formData.lastName}
+              onChangeText={(text) => setFormData({ ...formData, lastName: text })}
+              placeholder="Last Name"
+              placeholderTextColor={colors.gray}
+            />
+          </View>
+        </View>
+
+        {/* Save Button */}
+        <TouchableOpacity style={styles.saveButton} onPress={handleSave} disabled={loading}>
+          {loading ? <ActivityIndicator color={colors.white} /> : <Text style={styles.saveButtonText}>Save Changes</Text>}
+        </TouchableOpacity>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
@@ -201,6 +223,29 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.white,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.lightGray,
+  },
+  backButton: {
+    padding: 8,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: colors.black,
+  },
+  placeholder: {
+    width: 40,
+  },
+  content: {
+    flex: 1,
     padding: 20,
   },
   avatarContainer: {
@@ -270,6 +315,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: 'center',
     marginTop: 20,
+    marginBottom: 40,
   },
   saveButtonText: {
     color: colors.white,

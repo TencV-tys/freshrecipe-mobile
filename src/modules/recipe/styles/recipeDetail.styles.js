@@ -1,5 +1,7 @@
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Platform, StatusBar } from 'react-native';
 import colors from '../../shared/constants/colors';
+
+const statusBarHeight = Platform.OS === 'android' ? StatusBar.currentHeight : 44;
 
 export default StyleSheet.create({
   container: {
@@ -12,89 +14,12 @@ export default StyleSheet.create({
     alignItems: 'center',
     padding: 32,
   },
-  header: {
-    padding: 16,
-    backgroundColor: colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.lightGray,
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.lightGray,
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    marginBottom: 16,
-  },
-  searchIcon: {
-    marginRight: 8,
-  },
-  searchInput: {
-    flex: 1,
-    paddingVertical: 8,
-    fontSize: 16,
-  },
-  filterContainer: {
-    flexDirection: 'row',
-    marginBottom: 16,
-  },
-  filterChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: colors.lightGray,
-    marginRight: 8,
-  },
-  filterChipActive: {
-    backgroundColor: colors.primary,
-  },
-  filterText: {
-    color: colors.gray,
-    fontSize: 14,
-  },
-  filterTextActive: {
-    color: colors.white,
-  },
-  scannerButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.secondary,
-    padding: 16,
-    borderRadius: 8,
-    gap: 8,
-  },
-  scannerButtonText: {
-    color: colors.white,
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  listContent: {
-    padding: 16,
-  },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: colors.gray,
-    marginTop: 16,
-  },
-  emptySubtext: {
-    fontSize: 14,
-    color: colors.gray,
-    marginTop: 8,
-    textAlign: 'center',
-  },
-  errorText: {
-    fontSize: 16,
-    color: colors.error,
-    textAlign: 'center',
-  },
   detailContainer: {
     flex: 1,
-    backgroundColor: colors.white,
   },
   imageContainer: {
     position: 'relative',
+    paddingTop: statusBarHeight,
   },
   detailImage: {
     width: '100%',
@@ -104,10 +29,11 @@ export default StyleSheet.create({
     backgroundColor: colors.lightGray,
     justifyContent: 'center',
     alignItems: 'center',
+    height: 250,
   },
   actionButtons: {
     position: 'absolute',
-    top: 16,
+    top: statusBarHeight + 16,
     right: 16,
     flexDirection: 'row',
     gap: 8,
@@ -122,6 +48,7 @@ export default StyleSheet.create({
   },
   detailContent: {
     padding: 24,
+    paddingBottom: 80,
   },
   detailTitle: {
     fontSize: 24,
@@ -193,5 +120,39 @@ export default StyleSheet.create({
     fontSize: 16,
     color: colors.black,
     lineHeight: 24,
+  },
+  servingContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: colors.lightGray,
+    padding: 16,
+    borderRadius: 12,
+    marginVertical: 16,
+  },
+  servingLabel: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: colors.black,
+  },
+  servingControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 20,
+  },
+  servingButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.white,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  servingValue: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: colors.black,
+    minWidth: 40,
+    textAlign: 'center',
   },
 });

@@ -1,15 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   FlatList,
   ActivityIndicator,
   RefreshControl,
+  StatusBar,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import RecipeService from '../services/recipe.service';
 import RecipeCard from '../components/RecipeCard';
-import styles from '../styles/recipe.styles';
+import styles from '../styles/savedRecipes.styles';
 import colors from '../../shared/constants/colors';
 
 const SavedRecipesScreen = ({ navigation }) => {
@@ -17,17 +20,17 @@ const SavedRecipesScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    fetchSavedRecipes();
-  }, []);
-
   const fetchSavedRecipes = async () => {
-    setLoading(true);
-    const result = await RecipeService.getSavedRecipes();
-    if (result.success) {
-      setRecipes(result.recipes);
+    try { 
+      const result = await RecipeService.getSavedRecipes();
+      if (result.success) {
+        setRecipes(result.recipes || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch saved recipes:', error);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const onRefresh = async () => {
@@ -36,39 +39,70 @@ const SavedRecipesScreen = ({ navigation }) => {
     setRefreshing(false);
   };
 
+  useFocusEffect(
+    useCallback(() => {
+      fetchSavedRecipes();
+    }, [])
+  );
+
+  const renderEmptyState = () => (
+    <View style={styles.centerContainer}>
+      <Icon name="bookmark-outline" size={64} color={colors.gray} />
+      <Text style={styles.emptyText}>No saved recipes yet</Text>
+      <Text style={styles.emptySubtext}>
+        Tap the bookmark icon on any recipe to save it here
+      </Text>
+    </View>
+  );
+
   if (loading) {
     return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color={colors.primary} />
-      </View>
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <StatusBar barStyle="dark-content" backgroundColor={colors.white} />
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>Loading saved recipes...</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <StatusBar barStyle="dark-content" backgroundColor={colors.white} />
+      
       {recipes.length === 0 ? (
-        <View style={styles.centerContainer}>
-          <Icon name="bookmark-outline" size={64} color={colors.gray} />
-          <Text style={styles.emptyText}>No saved recipes yet</Text>
-          <Text style={styles.emptySubtext}>Start saving recipes to see them here</Text>
-        </View>
+        renderEmptyState()
       ) : (
         <FlatList
           data={recipes}
-          keyExtractor={(item) => item.id.toString()}
+          keyExtractor={(item) => (item.id || item._id)?.toString()}
           renderItem={({ item }) => (
             <RecipeCard
               recipe={item}
-              onPress={() => navigation.navigate('RecipeDetail', { recipeId: item.id })}
+              onPress={() => navigation.navigate('RecipeDetail', { recipeId: item.id || item._id })}
             />
           )}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />
+            <RefreshControl 
+              refreshing={refreshing} 
+              onRefresh={onRefresh} 
+              colors={[colors.primary]}
+              tintColor={colors.primary}
+            />
           }
           contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          ListHeaderComponent={
+            recipes.length > 0 ? (
+              <Text style={styles.savedCount}>
+                {recipes.length} {recipes.length === 1 ? 'recipe saved' : 'recipes saved'}
+              </Text>
+            ) : null
+          }
         />
       )}
-    </View>
+    </SafeAreaView>
   );
 };
 

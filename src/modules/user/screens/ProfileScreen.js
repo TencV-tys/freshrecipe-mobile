@@ -8,7 +8,9 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
+  StatusBar,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useAuth } from '../../../context/AuthContext';
 import api from '../../../api/api';
@@ -27,7 +29,7 @@ const colors = {
 const ProfileScreen = ({ navigation }) => {
   const { user, logout } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [stats, setStats] = useState({ savedRecipes: 0, createdRecipes: 0 });
+  const [stats, setStats] = useState({ savedRecipes: 0 });
 
   useEffect(() => {
     fetchUserStats();
@@ -37,7 +39,7 @@ const ProfileScreen = ({ navigation }) => {
     try {
       setLoading(true);
       const response = await api.get('/users/saved');
-      setStats({ savedRecipes: response.data?.length || 0, createdRecipes: 0 });
+      setStats({ savedRecipes: response.data?.length || 0 });
     } catch (error) {
       console.error('Failed to fetch stats:', error);
     } finally {
@@ -56,6 +58,26 @@ const ProfileScreen = ({ navigation }) => {
     );
   };
 
+  // Function to navigate to Chat tab
+  const goToChatbot = () => {
+    const parent = navigation.getParent();
+    if (parent) {
+      parent.navigate('Chat');
+    } else {
+      navigation.navigate('Chat');
+    }
+  };
+
+  const StatCard = ({ icon, value, label, onPress, color }) => (
+    <TouchableOpacity style={styles.statItem} onPress={onPress} activeOpacity={0.7}>
+      <View style={[styles.statIcon, { backgroundColor: color + '20' }]}>
+        <Icon name={icon} size={24} color={color} />
+      </View>
+      <Text style={styles.statNumber}>{value}</Text>
+      <Text style={styles.statLabel}>{label}</Text>
+    </TouchableOpacity>
+  );
+
   const MenuItem = ({ icon, title, onPress, color = colors.primary }) => (
     <TouchableOpacity style={styles.menuItem} onPress={onPress}>
       <View style={styles.menuLeft}>
@@ -68,96 +90,113 @@ const ProfileScreen = ({ navigation }) => {
 
   if (!user) {
     return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.loadingText}>Loading profile...</Text>
-      </View>
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <StatusBar barStyle="dark-content" backgroundColor={colors.white} />
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>Loading profile...</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      <View style={styles.profileHeader}>
-        <View style={styles.avatarWrapper}>
-          {user?.avatar ? (
-            <Image 
-              source={{ uri: user.avatar.startsWith('http') ? user.avatar : `http://10.205.101.2:5000${user.avatar}` }} 
-              style={styles.profileAvatar} 
-            />
-          ) : (
-            <View style={styles.profileAvatarPlaceholder}>
-              <Text style={styles.profileAvatarText}>
-                {user?.username?.charAt(0).toUpperCase() || 'U'}
-              </Text>
-            </View>
-          )}
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <StatusBar barStyle="dark-content" backgroundColor={colors.white} />
+      
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Profile Header */}
+        <View style={styles.profileHeader}>
+          <View style={styles.avatarWrapper}>
+            {user?.avatar ? (
+              <Image 
+                source={{ uri: user.avatar.startsWith('http') ? user.avatar : `http://10.205.101.2:5000${user.avatar}` }} 
+                style={styles.profileAvatar} 
+              />
+            ) : (
+              <View style={styles.profileAvatarPlaceholder}>
+                <Text style={styles.profileAvatarText}>
+                  {user?.username?.charAt(0).toUpperCase() || 'U'}
+                </Text>
+              </View>
+            )}
+            <TouchableOpacity 
+              style={styles.editAvatarButton}
+              onPress={() => navigation.navigate('EditProfileMain')}
+            >
+              <Icon name="pencil" size={16} color={colors.white} />
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.profileName}>{user?.username || 'User'}</Text>
+          <Text style={styles.profileEmail}>{user?.email || 'user@example.com'}</Text>
+          <View style={styles.profileRoleBadge}>
+            <Text style={styles.profileRole}>
+              {user?.role === 'admin' ? 'Administrator' : 'Food Lover'}
+            </Text>
+          </View>
         </View>
-        <Text style={styles.profileName}>{user?.username || 'User'}</Text>
-        <Text style={styles.profileEmail}>{user?.email || 'user@example.com'}</Text>
-        <View style={styles.profileRoleBadge}>
-          <Text style={styles.profileRole}>
-            {user?.role === 'admin' ? 'Administrator' : 'Food Lover'}
-          </Text>
+
+        {/* Stats Cards - Two cards showing the same saved count */}
+        <View style={styles.statsContainer}>
+          <StatCard
+            icon="bookmark-outline"
+            value={stats.savedRecipes}
+            label="Saved"
+            onPress={() => navigation.navigate('SavedRecipes')}
+            color={colors.primary}
+          />
+          <View style={styles.statDivider} />
+          <StatCard
+            icon="heart-outline"
+            value={stats.savedRecipes}
+            label="Favorites"
+            onPress={() => navigation.navigate('SavedRecipes')}
+            color={colors.secondary}
+          />
         </View>
-      </View>
 
-      <View style={styles.statsContainer}>
-        <View style={styles.statItem}>
-          <Text style={styles.statNumber}>{stats.savedRecipes}</Text>
-          <Text style={styles.statLabel}>Recipes Saved</Text>
+        {/* Menu Items */}
+        <View style={styles.menuSection}>
+          <Text style={styles.sectionTitle}>Account</Text>
+          <MenuItem
+            icon="bookmark-outline"
+            title="Saved Recipes"
+            onPress={() => navigation.navigate('SavedRecipes')}
+          />
+          <MenuItem
+            icon="settings-outline"
+            title="Settings"
+            onPress={() => navigation.navigate('SettingsMain')}
+          />
         </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statItem}>
-          <Text style={styles.statNumber}>{stats.createdRecipes}</Text>
-          <Text style={styles.statLabel}>Recipes Created</Text>
+
+        <View style={styles.menuSection}>
+          <Text style={styles.sectionTitle}>Support</Text>
+          <MenuItem
+            icon="help-circle-outline"
+            title="Help & Support"
+            onPress={() => navigation.navigate('HelpSupport')}
+          />
+          <MenuItem
+            icon="chatbubble-outline"
+            title="Chatbot Assistant"
+            onPress={goToChatbot}
+          />
+          <MenuItem
+            icon="information-circle-outline"
+            title="About"
+            onPress={() => Alert.alert('About', 'FreshRecipe v1.0.0\n\nFind delicious Filipino recipes and scan ingredients with AI.\n\n© 2024 FreshRecipe')}
+          />
         </View>
-      </View>
 
-      <View style={styles.menuSection}>
-        <Text style={styles.sectionTitle}>Account</Text>
-        <MenuItem
-          icon="person-outline"
-          title="Edit Profile"
-          onPress={() => navigation.navigate('EditProfileMain')}
-        />
-        <MenuItem
-          icon="bookmark-outline"
-          title="Saved Recipes"
-          onPress={() => navigation.navigate('SavedRecipesFromProfile')}
-        />
-        <MenuItem
-          icon="settings-outline"
-          title="Settings"
-          onPress={() => navigation.navigate('SettingsMain')}
-        />
-      </View>
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <Icon name="log-out-outline" size={24} color={colors.error} />
+          <Text style={styles.logoutText}>Logout</Text>
+        </TouchableOpacity>
 
-      <View style={styles.menuSection}>
-        <Text style={styles.sectionTitle}>Support</Text>
-        <MenuItem
-          icon="chatbubble-outline"
-          title="Chatbot Assistant"
-          onPress={() => navigation.navigate('ChatbotMain')}
-        />
-        <MenuItem
-          icon="help-circle-outline"
-          title="Help & Support"
-          onPress={() => Alert.alert('Help & Support', 'Coming soon!')}
-        />
-        <MenuItem
-          icon="information-circle-outline"
-          title="About"
-          onPress={() => Alert.alert('About', 'FreshRecipe v1.0.0\n\nFind delicious Filipino recipes and scan ingredients with AI.')}
-        />
-      </View>
-
-      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-        <Icon name="log-out-outline" size={24} color={colors.error} />
-        <Text style={styles.logoutText}>Logout</Text>
-      </TouchableOpacity>
-
-      <Text style={styles.version}>FreshRecipe v1.0.0</Text>
-    </ScrollView>
+        <Text style={styles.version}>FreshRecipe v1.0.0</Text>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
@@ -186,6 +225,7 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 30,
   },
   avatarWrapper: {
+    position: 'relative',
     marginBottom: 16,
   },
   profileAvatar: {
@@ -209,6 +249,19 @@ const styles = StyleSheet.create({
     fontSize: 40,
     fontWeight: 'bold',
     color: colors.white,
+  },
+  editAvatarButton: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: colors.primary,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: colors.white,
   },
   profileName: {
     fontSize: 24,
@@ -255,9 +308,18 @@ const styles = StyleSheet.create({
   statItem: {
     alignItems: 'center',
     flex: 1,
+    paddingVertical: 8,
+  },
+  statIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
   },
   statNumber: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
     color: colors.primary,
   },

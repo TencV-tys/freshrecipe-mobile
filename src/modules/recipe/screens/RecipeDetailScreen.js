@@ -13,7 +13,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import RecipeService from '../services/recipe.service';
 import { useAuth } from '../../../context/AuthContext';
 import ServingAdjuster from '../components/ServingAdjuster';
-import styles from '../styles/recipe.styles';
+import styles from '../styles/recipeDetail.styles';
 import colors from '../../shared/constants/colors';
 import { formatTime } from '../../shared/utils/formatters';
 
