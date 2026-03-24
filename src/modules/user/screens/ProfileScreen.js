@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useAuth } from '../../../context/AuthContext';
 import api from '../../../api/api';
+import NotificationService from '../../notification/services/notification.service';
 
 const colors = {
   primary: '#ff6b6b',
@@ -30,9 +31,11 @@ const ProfileScreen = ({ navigation }) => {
   const { user, logout } = useAuth();
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState({ savedRecipes: 0 });
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     fetchUserStats();
+    fetchUnreadCount();
   }, []);
 
   const fetchUserStats = async () => {
@@ -44,6 +47,13 @@ const ProfileScreen = ({ navigation }) => {
       console.error('Failed to fetch stats:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchUnreadCount = async () => {
+    const result = await NotificationService.getUnreadNotifications();
+    if (result.success) {
+      setUnreadCount(result.data?.length || 0);
     }
   };
 
@@ -105,8 +115,23 @@ const ProfileScreen = ({ navigation }) => {
       <StatusBar barStyle="dark-content" backgroundColor={colors.white} />
       
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Profile Header */}
+        {/* Profile Header with Notification Bell */}
         <View style={styles.profileHeader}>
+          <View style={styles.headerRow}>
+            <View style={styles.headerLeft} />
+            <TouchableOpacity 
+              style={styles.notificationButton}
+              onPress={() => navigation.navigate('Notifications')}
+            >
+              <Icon name="notifications-outline" size={24} color={colors.black} />
+              {unreadCount > 0 && (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
+          
           <View style={styles.avatarWrapper}>
             {user?.avatar ? (
               <Image 
@@ -136,7 +161,7 @@ const ProfileScreen = ({ navigation }) => {
           </View>
         </View>
 
-        {/* Stats Cards - Two cards showing the same saved count */}
+        {/* Stats Cards */}
         <View style={styles.statsContainer}>
           <StatCard
             icon="bookmark-outline"
@@ -224,9 +249,43 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
   },
+  headerRow: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    left: 20,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+  },
+  headerLeft: {
+    width: 40,
+  },
+  notificationButton: {
+    position: 'relative',
+    padding: 8,
+  },
+  badge: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    backgroundColor: colors.error,
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  badgeText: {
+    color: colors.white,
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
   avatarWrapper: {
     position: 'relative',
     marginBottom: 16,
+    marginTop: 20,
   },
   profileAvatar: {
     width: 100,
