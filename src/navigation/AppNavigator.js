@@ -18,8 +18,7 @@ import ChatbotScreen from '../modules/chatbot/screens/ChatbotScreen';
 import HelpSupportScreen from '../modules/user/screens/HelpSupportScreen';
 import PrivacyPolicyScreen from '../modules/user/screens/PrivacyPolicyScreen';
 import TermsOfServiceScreen from '../modules/user/screens/TermsOfServiceScreen';
-import NotificationScreen from '../modules/notification/screens/NotificationScreen';
-
+import NotificationScreen from '../modules/notification/screens/ NotificationScreen';
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
 

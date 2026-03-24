@@ -8,7 +8,7 @@ import {
 import Icon from 'react-native-vector-icons/Ionicons';
 import colors from '../../shared/constants/colors';
 
-const NotificationCard = ({ notification, onPress, onMarkRead }) => {
+const NotificationCard = ({ notification, onPress, onLongPress, onMarkRead, onDelete, selected, selectMode }) => {
   const getIcon = (type, severity) => {
     if (type === 'warning') return '⚠️';
     if (type === 'suspension') return '⏰';
@@ -27,24 +27,28 @@ const NotificationCard = ({ notification, onPress, onMarkRead }) => {
     }
   };
 
-  const getTextColor = (severity) => {
-    switch (severity) {
-      case 'danger': return '#ef4444';
-      case 'warning': return '#f59e0b';
-      case 'success': return '#10b981';
-      default: return '#3b82f6';
-    }
-  };
-
   return (
     <TouchableOpacity
       style={[
         styles.card,
-        !notification.isRead && styles.unread
+        !notification.isRead && styles.unread,
+        selected && styles.selected
       ]}
       onPress={() => onPress(notification)}
+      onLongPress={() => onLongPress && onLongPress(notification)}
       activeOpacity={0.7}
+      delayLongPress={500}
     >
+      {selectMode && (
+        <View style={styles.checkbox}>
+          <Icon 
+            name={selected ? "checkbox" : "square-outline"} 
+            size={22} 
+            color={selected ? colors.primary : colors.gray} 
+          />
+        </View>
+      )}
+      
       <View style={[styles.iconContainer, { backgroundColor: getBgColor(notification.severity) }]}>
         <Text style={styles.icon}>{getIcon(notification.type, notification.severity)}</Text>
       </View>
@@ -60,7 +64,7 @@ const NotificationCard = ({ notification, onPress, onMarkRead }) => {
         </Text>
       </View>
       
-      {!notification.isRead && (
+      {!selectMode && !notification.isRead && (
         <TouchableOpacity
           style={styles.markReadButton}
           onPress={() => onMarkRead(notification.id)}
@@ -91,6 +95,14 @@ const styles = StyleSheet.create({
   unread: {
     backgroundColor: '#fef2f2',
     borderColor: colors.primary,
+  },
+  selected: {
+    backgroundColor: '#e0e7ff',
+    borderColor: colors.primary,
+  },
+  checkbox: {
+    marginRight: 12,
+    justifyContent: 'center',
   },
   iconContainer: {
     width: 48,

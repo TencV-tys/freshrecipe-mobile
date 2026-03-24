@@ -23,6 +23,8 @@ const NotificationScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [selectedMode, setSelectedMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState([]);
 
   const fetchNotifications = async () => {
     const result = await NotificationService.getNotifications();
@@ -37,6 +39,8 @@ const NotificationScreen = ({ navigation }) => {
   useFocusEffect(
     useCallback(() => {
       fetchNotifications();
+      setSelectedMode(false);
+      setSelectedIds([]);
     }, [])
   );
 
@@ -44,6 +48,8 @@ const NotificationScreen = ({ navigation }) => {
     setRefreshing(true);
     await fetchNotifications();
     setRefreshing(false);
+    setSelectedMode(false);
+    setSelectedIds([]);
   };
 
   const handleMarkAsRead = async (notificationId) => {
@@ -59,11 +65,14 @@ const NotificationScreen = ({ navigation }) => {
   };
 
   const handleMarkAllAsRead = async () => {
-    if (unreadCount === 0) return;
+    if (unreadCount === 0) {
+      Alert.alert('Info', 'No unread notifications');
+      return;
+    }
     
     Alert.alert(
       'Mark All as Read',
-      'Are you sure you want to mark all notifications as read?',
+      `Mark all ${unreadCount} unread notifications as read?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -75,6 +84,7 @@ const NotificationScreen = ({ navigation }) => {
                 prev.map(n => ({ ...n, isRead: true }))
               );
               setUnreadCount(0);
+              Alert.alert('Success', 'All notifications marked as read');
             }
           },
         },
@@ -97,6 +107,55 @@ const NotificationScreen = ({ navigation }) => {
               setNotifications(prev =>
                 prev.filter(n => n.id !== notificationId)
               );
+              // Update unread count if deleted notification was unread
+              const deleted = notifications.find(n => n.id === notificationId);
+              if (deleted && !deleted.isRead) {
+                setUnreadCount(prev => Math.max(0, prev - 1));
+              }
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleSelect = (notificationId) => {
+    setSelectedIds(prev =>
+      prev.includes(notificationId)
+        ? prev.filter(id => id !== notificationId)
+        : [...prev, notificationId]
+    );
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedIds.length === 0) return;
+    
+    Alert.alert(
+      'Delete Notifications',
+      `Delete ${selectedIds.length} selected notification${selectedIds.length > 1 ? 's' : ''}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            let successCount = 0;
+            for (const id of selectedIds) {
+              const result = await NotificationService.deleteNotification(id);
+              if (result.success) successCount++;
+            }
+            if (successCount > 0) {
+              setNotifications(prev =>
+                prev.filter(n => !selectedIds.includes(n.id))
+              );
+              // Update unread count
+              const deletedUnread = notifications.filter(
+                n => selectedIds.includes(n.id) && !n.isRead
+              ).length;
+              setUnreadCount(prev => Math.max(0, prev - deletedUnread));
+              setSelectedIds([]);
+              setSelectedMode(false);
+              Alert.alert('Success', `${successCount} notification${successCount > 1 ? 's' : ''} deleted`);
             }
           },
         },
@@ -105,16 +164,27 @@ const NotificationScreen = ({ navigation }) => {
   };
 
   const handlePress = (notification) => {
-    // Mark as read when tapped
-    if (!notification.isRead) {
-      handleMarkAsRead(notification.id);
+    if (selectedMode) {
+      handleSelect(notification.id);
+    } else {
+      if (!notification.isRead) {
+        handleMarkAsRead(notification.id);
+      }
+      // Optional: Navigate based on notification type
+      if (notification.type === 'warning' || notification.type === 'suspension' || notification.type === 'ban') {
+        Alert.alert(notification.title, notification.message);
+      }
     }
-    
-    // Navigate based on notification type
-    if (notification.type === 'warning' || notification.type === 'suspension' || notification.type === 'ban') {
-      // Can navigate to moderation history or just show alert
-      Alert.alert(notification.title, notification.message);
-    }
+  };
+
+  const handleLongPress = (notification) => {
+    setSelectedMode(true);
+    handleSelect(notification.id);
+  };
+
+  const exitSelectionMode = () => {
+    setSelectedMode(false);
+    setSelectedIds([]);
   };
 
   if (loading) {
@@ -133,14 +203,25 @@ const NotificationScreen = ({ navigation }) => {
     <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.white} />
       
+      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Icon name="arrow-back" size={24} color={colors.black} />
+        <TouchableOpacity onPress={() => selectedMode ? exitSelectionMode() : navigation.goBack()} style={styles.backButton}>
+          <Icon name={selectedMode ? "close" : "arrow-back"} size={24} color={colors.black} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Notifications</Text>
-        {unreadCount > 0 && (
+        
+        <Text style={styles.headerTitle}>
+          {selectedMode ? `${selectedIds.length} selected` : 'Notifications'}
+        </Text>
+        
+        {!selectedMode && unreadCount > 0 && (
           <TouchableOpacity onPress={handleMarkAllAsRead} style={styles.markAllButton}>
             <Text style={styles.markAllText}>Mark all read</Text>
+          </TouchableOpacity>
+        )}
+        
+        {selectedMode && selectedIds.length > 0 && (
+          <TouchableOpacity onPress={handleDeleteSelected} style={styles.deleteButton}>
+            <Icon name="trash-outline" size={22} color={colors.error} />
           </TouchableOpacity>
         )}
       </View>
@@ -155,8 +236,11 @@ const NotificationScreen = ({ navigation }) => {
             <NotificationCard
               notification={item}
               onPress={handlePress}
+              onLongPress={handleLongPress}
               onMarkRead={handleMarkAsRead}
               onDelete={handleDelete}
+              selected={selectedIds.includes(item.id)}
+              selectMode={selectedMode}
             />
           )}
           refreshControl={
