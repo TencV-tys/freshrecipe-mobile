@@ -29,6 +29,7 @@ const ChatbotScreen = () => {
   ]);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
   const flatListRef = useRef();
   const tabBarHeight = useBottomTabBarHeight();
 
@@ -40,6 +41,20 @@ const ChatbotScreen = () => {
     'What is sinigang?',
     'Cooking tips for beginners',
   ];
+
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => {
+      setKeyboardVisible(true);
+    });
+    const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardVisible(false);
+    });
+
+    return () => {
+      keyboardDidShowListener.remove();
+      keyboardDidHideListener.remove();
+    };
+  }, []);
 
   useEffect(() => {
     scrollToBottom();
@@ -151,7 +166,13 @@ const ChatbotScreen = () => {
               ListFooterComponent={isTyping ? renderTypingIndicator : null}
             />
             
-            <View style={[styles.inputContainer, { paddingBottom: tabBarHeight + 10 }]}>
+            <View style={[
+              styles.inputContainer, 
+              { 
+                paddingBottom: keyboardVisible ? 10 : tabBarHeight + 10,
+                marginBottom: keyboardVisible ? 0 : 0
+              }
+            ]}>
               <TextInput
                 style={styles.input}
                 placeholder="Ask me anything about cooking..."
@@ -204,6 +225,7 @@ const styles = {
   },
   innerContainer: {
     flex: 1,
+    justifyContent: 'space-between',
   },
   messagesList: {
     padding: 16,
