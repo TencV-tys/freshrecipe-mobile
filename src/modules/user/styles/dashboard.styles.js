@@ -189,4 +189,69 @@ export default StyleSheet.create({
   bottomPadding: {
     height: 30,
   },
+  // Add these styles to your existing styles
+statsRow: {
+  flexDirection: 'row',
+  justifyContent: 'space-around',
+  gap: 12,
+  paddingHorizontal: 16,
+  marginTop: 16,
+  marginBottom: 8,
+},
+aiRecipeCard: {
+  backgroundColor: colors.white,
+  borderRadius: 16,
+  marginBottom: 12,
+  padding: 16,
+  shadowColor: colors.black,
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.1,
+  shadowRadius: 4,
+  elevation: 2,
+  borderWidth: 1,
+  borderColor: colors.lightGray,
+},
+aiRecipeContent: {
+  gap: 8,
+},
+aiBadge: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  alignSelf: 'flex-start',
+  backgroundColor: colors.secondary,
+  paddingHorizontal: 8,
+  paddingVertical: 4,
+  borderRadius: 12,
+  gap: 4,
+},
+aiBadgeText: {
+  fontSize: 10,
+  color: colors.white,
+  fontWeight: 'bold',
+},
+aiRecipeTitle: {
+  fontSize: 16,
+  fontWeight: 'bold',
+  color: colors.black,
+},
+aiRecipeDescription: {
+  fontSize: 13,
+  color: colors.gray,
+  lineHeight: 18,
+},
+aiMetaRow: {
+  flexDirection: 'row',
+  flexWrap: 'wrap',
+  marginTop: 4,
+},
+aiMetaItem: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  marginRight: 16,
+  gap: 4,
+},
+aiMetaText: {
+  fontSize: 11,
+  color: colors.gray,
+},
 });

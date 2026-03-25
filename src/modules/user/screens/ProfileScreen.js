@@ -17,6 +17,7 @@ import api from '../../../api/api';
 import { BASE_IP } from '../../../api/apiConfig';
 import NotificationService from '../../notification/services/notification.service';
 import UserService from '../services/user.service';
+import RecipeService from '../../recipe/services/recipe.service'; // Add this
 
 const colors = {
   primary: '#ff6b6b',
@@ -32,11 +33,12 @@ const colors = {
 const ProfileScreen = ({ navigation }) => {
   const { user, logout } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [stats, setStats] = useState({ savedRecipes: 0 });
+  const [stats, setStats] = useState({ savedRecipes: 0, generatedRecipes: 0 });
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     fetchUserStats();
+    fetchGeneratedCount();
     fetchUnreadCount();
   }, []);
 
@@ -44,11 +46,22 @@ const ProfileScreen = ({ navigation }) => {
     try {
       setLoading(true);
       const response = await api.get('/users/saved');
-      setStats({ savedRecipes: response.data?.length || 0 });
+      setStats(prev => ({ ...prev, savedRecipes: response.data?.length || 0 }));
     } catch (error) {
       console.error('Failed to fetch stats:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchGeneratedCount = async () => {
+    try {
+      const result = await RecipeService.getUserGeneratedRecipes();
+      if (result.success) {
+        setStats(prev => ({ ...prev, generatedRecipes: result.recipes?.length || 0 }));
+      }
+    } catch (error) {
+      console.error('Failed to fetch generated count:', error);
     }
   };
 
@@ -182,7 +195,7 @@ const ProfileScreen = ({ navigation }) => {
           </View>
         </View>
 
-        {/* Stats Cards - Only Saved Recipes */}
+        {/* Stats Cards - Two cards side by side */}
         <View style={styles.statsContainer}>
           <StatCard
             icon="bookmark-outline"
@@ -190,6 +203,14 @@ const ProfileScreen = ({ navigation }) => {
             label="Saved Recipes"
             onPress={() => navigation.navigate('SavedRecipes')}
             color={colors.primary}
+          />
+          <View style={styles.statDivider} />
+          <StatCard
+            icon="sparkles-outline"
+            value={stats.generatedRecipes}
+            label="AI Recipes"
+            onPress={() => navigation.navigate('MyGeneratedRecipes')}
+            color={colors.secondary}
           />
         </View>
 
@@ -202,11 +223,11 @@ const ProfileScreen = ({ navigation }) => {
             onPress={() => navigation.navigate('SavedRecipes')}
           />
           <MenuItem
-  icon="sparkles-outline"
-  title="My AI Recipes"
-  onPress={() => navigation.navigate('MyGeneratedRecipes')}
-  color={colors.secondary}
-/>
+            icon="sparkles-outline"
+            title="My AI Recipes"
+            onPress={() => navigation.navigate('MyGeneratedRecipes')}
+            color={colors.secondary}
+          />
           <MenuItem
             icon="settings-outline"
             title="Settings"
@@ -371,7 +392,7 @@ const styles = StyleSheet.create({
   },
   statsContainer: {
     flexDirection: 'row',
-    justifyContent: 'center',
+    justifyContent: 'space-around',
     paddingVertical: 20,
     marginHorizontal: 20,
     marginTop: 20,
@@ -405,6 +426,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.gray,
     marginTop: 4,
+  },
+  statDivider: {
+    width: 1,
+    backgroundColor: colors.lightGray,
   },
   menuSection: {
     paddingHorizontal: 20,

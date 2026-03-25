@@ -24,6 +24,7 @@ const DashboardScreen = ({ navigation }) => {
   const [savedRecipes, setSavedRecipes] = useState([]);
   const [recentRecipes, setRecentRecipes] = useState([]);
   const [popularRecipes, setPopularRecipes] = useState([]);
+  const [generatedRecipes, setGeneratedRecipes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -34,6 +35,7 @@ const DashboardScreen = ({ navigation }) => {
   useFocusEffect(
     useCallback(() => {
       fetchSavedRecipes();
+      fetchGeneratedRecipes();
     }, [])
   );
 
@@ -42,7 +44,8 @@ const DashboardScreen = ({ navigation }) => {
     await Promise.all([
       fetchSavedRecipes(), 
       fetchRecentRecipes(), 
-      fetchPopularRecipes()
+      fetchPopularRecipes(),
+      fetchGeneratedRecipes()
     ]);
     setLoading(false);
   };
@@ -55,6 +58,18 @@ const DashboardScreen = ({ navigation }) => {
       }
     } catch (error) {
       console.error('Error fetching saved recipes:', error);
+    }
+  };
+
+  const fetchGeneratedRecipes = async () => {
+    try {
+      const result = await RecipeService.getUserGeneratedRecipes();
+      if (result.success) {
+        setGeneratedRecipes(result.recipes || []);
+        console.log('✅ AI recipes loaded:', result.recipes.length);
+      }
+    } catch (error) {
+      console.error('Error fetching AI recipes:', error);
     }
   };
 
@@ -103,6 +118,10 @@ const DashboardScreen = ({ navigation }) => {
 
   const goToSavedRecipes = () => {
     navigation.navigate('SavedRecipes');
+  };
+
+  const goToGeneratedRecipes = () => {
+    navigation.navigate('MyGeneratedRecipes');
   };
 
   const StatCard = ({ icon, value, label, onPress, color }) => (
@@ -181,7 +200,7 @@ const DashboardScreen = ({ navigation }) => {
           </TouchableOpacity>
         </View>
 
-        {/* Stats Card - Total Saved Recipes */}
+        {/* Stats Cards - Two cards side by side */}
         <View style={styles.statsRow}>
           <StatCard
             icon="bookmark-outline"
@@ -189,6 +208,13 @@ const DashboardScreen = ({ navigation }) => {
             label="Saved Recipes"
             onPress={goToSavedRecipes}
             color={colors.primary}
+          />
+          <StatCard
+            icon="sparkles-outline"
+            value={generatedRecipes.length}
+            label="AI Recipes"
+            onPress={goToGeneratedRecipes}
+            color={colors.secondary}
           />
         </View>
 
@@ -225,6 +251,17 @@ const DashboardScreen = ({ navigation }) => {
                 color="#ff6b6b"
               />
             </View>
+            <View style={styles.featuresColumn}>
+              <FeatureCard
+                icon="sparkles-outline"
+                title="My AI Recipes"
+                description="View your AI-generated recipes"
+                onPress={goToGeneratedRecipes}
+                color={colors.secondary}
+              />
+            </View>
+          </View>
+          <View style={styles.featuresRow}>
             <View style={styles.featuresColumn}>
               <FeatureCard
                 icon="person-outline"
@@ -291,6 +328,57 @@ const DashboardScreen = ({ navigation }) => {
                 onSave={() => {}}
                 isSaved={true}
               />
+            ))
+          )}
+        </View>
+
+        {/* Your AI Generated Recipes */}
+        <View style={styles.section}>
+          <SectionHeader
+            title="✨ Your AI Recipes"
+            onSeeAll={generatedRecipes.length > 0 ? goToGeneratedRecipes : null}
+          />
+          
+          {generatedRecipes.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Icon name="sparkles-outline" size={48} color={colors.gray} />
+              <Text style={styles.emptyStateText}>No AI recipes yet</Text>
+              <Text style={styles.emptyStateSubtext}>
+                Scan ingredients and tap "Generate Filipino Recipe" to create one!
+              </Text>
+            </View>
+          ) : (
+            generatedRecipes.slice(0, 3).map((recipe, index) => (
+              <TouchableOpacity
+                key={recipe.id || index}
+                style={styles.aiRecipeCard}
+                onPress={() => navigation.navigate('GeneratedRecipeDetail', { recipe })}
+              >
+                <View style={styles.aiRecipeContent}>
+                  <View style={styles.aiBadge}>
+                    <Icon name="sparkles" size={12} color={colors.white} />
+                    <Text style={styles.aiBadgeText}>AI Generated</Text>
+                  </View>
+                  <Text style={styles.aiRecipeTitle} numberOfLines={1}>
+                    {recipe.title || 'Untitled Recipe'}
+                  </Text>
+                  <Text style={styles.aiRecipeDescription} numberOfLines={2}>
+                    {recipe.description || 'No description available'}
+                  </Text>
+                  <View style={styles.aiMetaRow}>
+                    <View style={styles.aiMetaItem}>
+                      <Icon name="time-outline" size={12} color={colors.gray} />
+                      <Text style={styles.aiMetaText}>
+                        {(recipe.prepTime || 0) + (recipe.cookTime || 0)} min
+                      </Text>
+                    </View>
+                    <View style={styles.aiMetaItem}>
+                      <Icon name="restaurant-outline" size={12} color={colors.gray} />
+                      <Text style={styles.aiMetaText}>{recipe.mealType || 'Meal'}</Text>
+                    </View>
+                  </View>
+                </View>
+              </TouchableOpacity>
             ))
           )}
         </View>
