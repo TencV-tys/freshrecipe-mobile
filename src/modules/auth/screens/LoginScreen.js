@@ -25,20 +25,28 @@ const LoginScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
 
-  const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
-      return;
-    }
 
-    setLoading(true);
-    const result = await login(email, password);
-    setLoading(false);
+const handleLogin = async () => {
+  if (!email || !password) {
+    Alert.alert('Error', 'Please fill in all fields');
+    return;
+  }
 
-    if (!result.success) {
+  setLoading(true);
+  const result = await login(email, password);
+  setLoading(false);
+
+  if (!result.success) {
+    // Check for specific error types
+    if (result.error.includes('banned')) {
+      Alert.alert('Account Banned', result.error);
+    } else if (result.error.includes('suspended')) {
+      Alert.alert('Account Suspended', result.error);
+    } else {
       Alert.alert('Login Failed', result.error);
     }
-  };
+  }
+};
 
   return (
     <View style={styles.container}>

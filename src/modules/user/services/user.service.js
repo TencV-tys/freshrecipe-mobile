@@ -1,4 +1,4 @@
-import api from '../../../api/api';  // ✅ Import root API
+import api from '../../../api/api';
 
 class UserService {
   async getProfile() {
@@ -56,6 +56,27 @@ class UserService {
       return { success: true, recipes: response.data };
     } catch (error) {
       console.error('Failed to get saved recipes:', error);
+      return { success: false, error: error.response?.data?.message };
+    }
+  }
+
+  async logout() {
+    try {
+      const response = await api.post('/auth/logout');
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Failed to logout:', error);
+      return { success: false, error: error.response?.data?.message };
+    }
+  }
+
+  // ✅ Add this to check user status (banned/suspended)
+  async getUserStatus() {
+    try {
+      const response = await api.get('/auth/status');
+      return { success: true, status: response.data };
+    } catch (error) {
+      console.error('Failed to get user status:', error);
       return { success: false, error: error.response?.data?.message };
     }
   }

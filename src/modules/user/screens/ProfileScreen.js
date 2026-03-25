@@ -15,6 +15,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { useAuth } from '../../../context/AuthContext';
 import api from '../../../api/api';
 import NotificationService from '../../notification/services/notification.service';
+import UserService from '../services/user.service'; // Import UserService
 
 const colors = {
   primary: '#ff6b6b',
@@ -57,13 +58,37 @@ const ProfileScreen = ({ navigation }) => {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     Alert.alert(
       'Logout',
       'Are you sure you want to logout?',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Logout', onPress: logout, style: 'destructive' },
+        {
+          text: 'Logout',
+          onPress: async () => {
+            try {
+              // Call backend logout to invalidate session
+              await UserService.logout();
+              // Call context logout to clear local state
+              await logout();
+              // Navigate to login screen
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'Login' }],
+              });
+            } catch (error) {
+              console.error('Logout error:', error);
+              // Even if backend fails, still logout locally
+              await logout();
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'Login' }],
+              });
+            }
+          },
+          style: 'destructive'
+        },
       ]
     );
   };
