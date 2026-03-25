@@ -8,21 +8,38 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import colors from '../../shared/constants/colors';
-import { formatTime } from '../../shared/utils/formatters';
+import { BASE_IP } from '../../../api/apiConfig';
 
 const RecipeCard = ({ recipe, onPress, onSave, isSaved }) => {
   const totalTime = (recipe.prepTime || 0) + (recipe.cookTime || 0);
+  
+  // Get the correct image URL
+  const getImageUrl = () => {
+    if (!recipe.image) return null;
+    if (recipe.image.startsWith('http')) return recipe.image;
+    return `${BASE_IP}${recipe.image}`;
+  };
+
+  const imageUrl = getImageUrl();
 
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress}>
-      {recipe.image ? (
-        <Image source={{ uri: recipe.image }} style={styles.image} />
-      ) : (
-        <View style={[styles.image, styles.placeholder]}>
-          <Icon name="restaurant-outline" size={40} color={colors.gray} />
-        </View>
-      )}
+    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
+      {/* Left: Image */}
+      <View style={styles.imageContainer}>
+        {imageUrl ? (
+          <Image 
+            source={{ uri: imageUrl }} 
+            style={styles.image}
+            resizeMode="cover"
+          />
+        ) : (
+          <View style={styles.placeholderImage}>
+            <Icon name="restaurant-outline" size={32} color={colors.gray} />
+          </View>
+        )}
+      </View>
       
+      {/* Right: Content */}
       <View style={styles.content}>
         <Text style={styles.title} numberOfLines={1}>
           {recipe.title}
@@ -31,7 +48,7 @@ const RecipeCard = ({ recipe, onPress, onSave, isSaved }) => {
         <View style={styles.infoRow}>
           <View style={styles.infoItem}>
             <Icon name="time-outline" size={14} color={colors.gray} />
-            <Text style={styles.infoText}>{formatTime(totalTime)}</Text>
+            <Text style={styles.infoText}>{totalTime} min</Text>
           </View>
           <View style={styles.infoItem}>
             <Icon name="restaurant-outline" size={14} color={colors.gray} />
@@ -43,6 +60,22 @@ const RecipeCard = ({ recipe, onPress, onSave, isSaved }) => {
           </View>
         </View>
         
+        <View style={styles.bottomRow}>
+          <Text style={styles.servings}>
+            👥 {recipe.servings} servings
+          </Text>
+          
+          {onSave && (
+            <TouchableOpacity onPress={onSave} style={styles.saveButton}>
+              <Icon
+                name={isSaved ? 'bookmark' : 'bookmark-outline'}
+                size={22}
+                color={isSaved ? colors.primary : colors.gray}
+              />
+            </TouchableOpacity>
+          )}
+        </View>
+        
         {recipe.matchPercentage && (
           <View style={styles.matchContainer}>
             <View style={styles.matchBar}>
@@ -52,16 +85,6 @@ const RecipeCard = ({ recipe, onPress, onSave, isSaved }) => {
           </View>
         )}
       </View>
-      
-      {onSave && (
-        <TouchableOpacity style={styles.saveButton} onPress={onSave}>
-          <Icon
-            name={isSaved ? 'bookmark' : 'bookmark-outline'}
-            size={24}
-            color={isSaved ? colors.primary : colors.gray}
-          />
-        </TouchableOpacity>
-      )}
     </TouchableOpacity>
   );
 };
@@ -70,7 +93,7 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
     backgroundColor: colors.white,
-    borderRadius: 12,
+    borderRadius: 16,
     marginHorizontal: 16,
     marginVertical: 8,
     padding: 12,
@@ -80,45 +103,69 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  image: {
+  imageContainer: {
     width: 100,
     height: 100,
-    borderRadius: 8,
-  },
-  placeholder: {
+    borderRadius: 12,
+    overflow: 'hidden',
     backgroundColor: colors.lightGray,
+  },
+  image: {
+    width: '100%',
+    height: '100%',
+  },
+  placeholderImage: {
+    width: '100%',
+    height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: colors.lightGray,
   },
   content: {
     flex: 1,
     marginLeft: 12,
+    justifyContent: 'space-between',
   },
   title: {
     fontSize: 16,
     fontWeight: 'bold',
     color: colors.black,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   infoRow: {
     flexDirection: 'row',
-    marginBottom: 8,
+    flexWrap: 'wrap',
+    marginBottom: 6,
   },
   infoItem: {
     flexDirection: 'row',
     alignItems: 'center',
     marginRight: 12,
+    marginBottom: 4,
   },
   infoText: {
     fontSize: 12,
     color: colors.gray,
     marginLeft: 4,
   },
-  matchContainer: {
+  bottomRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginTop: 4,
   },
+  servings: {
+    fontSize: 11,
+    color: colors.gray,
+  },
+  saveButton: {
+    padding: 4,
+  },
+  matchContainer: {
+    marginTop: 8,
+  },
   matchBar: {
-    height: 4,
+    height: 3,
     backgroundColor: colors.lightGray,
     borderRadius: 2,
     overflow: 'hidden',
@@ -126,14 +173,12 @@ const styles = StyleSheet.create({
   matchFill: {
     height: '100%',
     backgroundColor: colors.primary,
+    borderRadius: 2,
   },
   matchText: {
     fontSize: 10,
     color: colors.gray,
     marginTop: 4,
-  },
-  saveButton: {
-    padding: 8,
   },
 });
 

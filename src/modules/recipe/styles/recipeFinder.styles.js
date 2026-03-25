@@ -1,8 +1,6 @@
 import { StyleSheet, Platform, StatusBar } from 'react-native';
 import colors from '../../shared/constants/colors';
 
-const statusBarHeight = Platform.OS === 'android' ? StatusBar.currentHeight : 44;
-
 export default StyleSheet.create({
   container: {
     flex: 1,
@@ -14,33 +12,34 @@ export default StyleSheet.create({
     alignItems: 'center',
     padding: 32,
   },
-  header: {
-    paddingTop: statusBarHeight + 16,
+  // Search Section - Clean, no extra white space
+  searchSection: {
     paddingHorizontal: 16,
-    paddingBottom: 16,
+    paddingTop: 8,
+    paddingBottom: 12,
     backgroundColor: colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.lightGray,
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.lightGray,
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    marginBottom: 16,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    marginBottom: 12,
   },
   searchIcon: {
     marginRight: 8,
   },
   searchInput: {
     flex: 1,
-    paddingVertical: 8,
+    paddingVertical: 10,
     fontSize: 16,
+    color: colors.black,
   },
   filterContainer: {
     flexDirection: 'row',
-    marginBottom: 16,
+    marginBottom: 4,
   },
   filterChip: {
     paddingHorizontal: 16,
@@ -55,26 +54,32 @@ export default StyleSheet.create({
   filterText: {
     color: colors.gray,
     fontSize: 14,
+    fontWeight: '500',
   },
   filterTextActive: {
     color: colors.white,
+  },
+  filterContent: {
+    paddingRight: 16,
   },
   scannerButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.secondary,
-    padding: 16,
-    borderRadius: 8,
+    marginHorizontal: 16,
+    marginBottom: 12,
+    paddingVertical: 12,
+    borderRadius: 12,
     gap: 8,
   },
   scannerButtonText: {
     color: colors.white,
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: 14,
+    fontWeight: '600',
   },
   listContent: {
-    padding: 16,
+    paddingHorizontal: 16,
     paddingBottom: 80,
   },
   emptyText: {
@@ -93,8 +98,5 @@ export default StyleSheet.create({
     fontSize: 14,
     color: colors.gray,
     marginTop: 12,
-  },
-  filterContent: {
-    paddingRight: 16,
   },
 });

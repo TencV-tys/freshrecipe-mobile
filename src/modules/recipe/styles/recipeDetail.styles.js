@@ -155,4 +155,41 @@ export default StyleSheet.create({
     minWidth: 40,
     textAlign: 'center',
   },
+  // Add these styles to your existing styles
+header: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  paddingHorizontal: 16,
+  paddingVertical: 12,
+  backgroundColor: colors.white,
+  borderBottomWidth: 1,
+  borderBottomColor: colors.lightGray,
+},
+backButton: {
+  padding: 8,
+  marginLeft: -8,
+},
+headerTitle: {
+  fontSize: 18,
+  fontWeight: '600',
+  color: colors.black,
+  flex: 1,
+  textAlign: 'center',
+},
+headerRight: {
+  width: 40,
+},
+backButtonContainer: {
+  marginTop: 16,
+  paddingHorizontal: 20,
+  paddingVertical: 10,
+  backgroundColor: colors.primary,
+  borderRadius: 8,
+},
+backButtonText: {
+  color: colors.white,
+  fontSize: 14,
+  fontWeight: '500',
+},
 });

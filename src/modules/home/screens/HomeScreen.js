@@ -19,7 +19,7 @@ const HomeScreen = ({ navigation }) => {
       description: 'Search thousands of recipes by name, cuisine, or ingredients',
       icon: 'search-outline',
       color: colors.primary,
-      screen: 'Find',
+      screen: 'Scan', // Changed from 'Find' to 'Scan'
     },
     {
       id: 'scan',
@@ -27,7 +27,7 @@ const HomeScreen = ({ navigation }) => {
       description: 'Take a photo of ingredients and get recipe suggestions',
       icon: 'camera-outline',
       color: colors.secondary,
-      screen: 'Find',
+      screen: 'Scan', // Changed from 'Find' to 'Scan'
     },
     {
       id: 'saved',
@@ -52,9 +52,11 @@ const HomeScreen = ({ navigation }) => {
       style={styles.featureCard}
       onPress={() => {
         if (feature.screen === 'SavedRecipes') {
+          // Navigate to Dashboard tab and then to SavedRecipes
           navigation.navigate('Dashboard', { screen: 'SavedRecipes' });
-        } else if (feature.screen === 'Find') {
-          navigation.navigate('Find');
+        } else if (feature.screen === 'Scan') {
+          // Navigate to the Scan tab (which contains RecipeFinderScreen)
+          navigation.navigate('Scan');
         } else if (feature.screen === 'Chat') {
           navigation.navigate('Chat');
         }
@@ -99,18 +101,18 @@ const HomeScreen = ({ navigation }) => {
           <QuickAction
             icon="search-outline"
             title="Search"
-            onPress={() => navigation.navigate('Find')}
+            onPress={() => navigation.navigate('Scan')} // Changed to Scan
             color={colors.primary}
           />
           <QuickAction
             icon="camera-outline"
             title="Scan"
-            onPress={() => navigation.navigate('Find')}
+            onPress={() => navigation.navigate('Scan')} // Changed to Scan
             color={colors.secondary}
           />
           <QuickAction
             icon="bookmark-outline"
-            title="Favorites"
+            title="Saved"
             onPress={() => navigation.navigate('Dashboard', { screen: 'SavedRecipes' })}
             color="#4ecdc4"
           />
@@ -135,7 +137,7 @@ const HomeScreen = ({ navigation }) => {
           <Text style={styles.sectionTitle}>Get Inspired</Text>
           <TouchableOpacity
             style={styles.inspirationCard}
-            onPress={() => navigation.navigate('Find')}
+            onPress={() => navigation.navigate('Scan')} // Changed to Scan
           >
             <View style={styles.inspirationContent}>
               <Text style={styles.inspirationTitle}>Popular Filipino Dishes</Text>

@@ -2,7 +2,8 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 import SecureStorage from '../services/secureStorage';
 import api from '../api/api';
 import UserService from '../modules/user/services/user.service';
-import { Alert } from 'react-native'; // Add this for alerts
+import RecipeService from '../modules/recipe/services/recipe.service'; // Add this
+import { Alert } from 'react-native';
 
 const AuthContext = createContext();
 
@@ -22,22 +23,22 @@ export const AuthProvider = ({ children }) => {
       if (token) {
         api.defaults.headers.Authorization = `Bearer ${token}`;
         
-        // Check user status first
         const statusResult = await UserService.getUserStatus();
         if (statusResult.success) {
           const { status, message } = statusResult.status;
-          
           if (status === 'banned' || status === 'suspended') {
             console.log('User is', status, ':', message);
-            await logout(true); // silent logout
+            await logout(true);
             return;
           }
         }
         
-        // Get user profile
+        // ✅ Get user profile with saved recipes
         const response = await api.get('/users/profile');
         if (response.data && response.data.role !== 'admin') {
-          setUser(response.data);
+          console.log('✅ User profile loaded:', response.data);
+          console.log('📚 Saved recipes from profile:', response.data.savedRecipes);
+          setUser(response.data); // This now includes savedRecipes!
         } else {
           await SecureStorage.removeToken();
           delete api.defaults.headers.Authorization;
@@ -61,10 +62,16 @@ export const AuthProvider = ({ children }) => {
         return { success: false, error: 'This app is for users only' };
       }
       
+      // ✅ After login, fetch full profile with saved recipes
+      const profileResponse = await api.get('/users/profile');
+      const fullUserData = profileResponse.data;
+      console.log('✅ Full user data after login:', fullUserData);
+      console.log('📚 Saved recipes after login:', fullUserData.savedRecipes);
+      
       await SecureStorage.storeToken(token);
       api.defaults.headers.Authorization = `Bearer ${token}`;
-      setUser(userData);
-      return { success: true, user: userData };
+      setUser(fullUserData);
+      return { success: true, user: fullUserData };
     } catch (error) {
       return {
         success: false,
@@ -78,10 +85,14 @@ export const AuthProvider = ({ children }) => {
       const response = await api.post('/auth/register', userData);
       const { token, user: userDataResponse } = response.data;
       
+      // ✅ After registration, fetch full profile with saved recipes
+      const profileResponse = await api.get('/users/profile');
+      const fullUserData = profileResponse.data;
+      
       await SecureStorage.storeToken(token);
       api.defaults.headers.Authorization = `Bearer ${token}`;
-      setUser(userDataResponse);
-      return { success: true, user: userDataResponse };
+      setUser(fullUserData);
+      return { success: true, user: fullUserData };
     } catch (error) {
       return {
         success: false,
@@ -99,23 +110,6 @@ export const AuthProvider = ({ children }) => {
       await SecureStorage.removeToken();
       delete api.defaults.headers.Authorization;
       setUser(null);
-      
-      // Only show alert if not silent (like on startup)
-      if (!silent) {
-        // Alert.alert('Logged Out', 'You have been logged out');
-      }
-    }
-  };
-
-  const toggleSaveRecipe = async (recipeId) => {
-    try {
-      const response = await api.post(`/users/saved/${recipeId}`);
-      return { success: true, isSaved: response.data.isSaved };
-    } catch (error) {
-      return {
-        success: false,
-        error: error.response?.data?.message || 'Failed to save recipe',
-      };
     }
   };
 
@@ -140,7 +134,7 @@ export const AuthProvider = ({ children }) => {
       }
     };
     
-    const interval = setInterval(checkUserStatus, 5 * 60 * 1000); // 5 minutes
+    const interval = setInterval(checkUserStatus, 5 * 60 * 1000);
     return () => clearInterval(interval);
   }, [user]);
 
@@ -154,7 +148,6 @@ export const AuthProvider = ({ children }) => {
     login,
     register,
     logout,
-    toggleSaveRecipe,
     loading,
   };
 

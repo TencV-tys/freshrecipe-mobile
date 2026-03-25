@@ -1,12 +1,10 @@
 import axios from 'axios';
 import SecureStorage from '../services/secureStorage';
+import { API_URL, BASE_IP } from './apiConfig';
 
-// Get your computer's IP address
-
-export const IP = '10.205.101.2'; // CHANGE THIS TO YOUR IP
-export const API_URL = `http://${IP}:5000/api`;
-
-console.log('API URL:', API_URL);
+console.log('🔧 API Configuration:');
+console.log('   API_URL:', API_URL);
+console.log('   BASE_IP:', BASE_IP);
 
 const api = axios.create({
   baseURL: API_URL,
@@ -24,6 +22,8 @@ api.interceptors.request.use(
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
         console.log('🔐 Token added to request:', config.url);
+      } else {
+        console.log('🔓 No token for request:', config.url);
       }
     } catch (error) {
       console.error('Error adding token:', error);
@@ -42,6 +42,10 @@ api.interceptors.response.use(
   async (error) => {
     if (error.response?.status === 401) {
       console.log('⏰ Token expired, clearing...');
+      await SecureStorage.removeToken();
+    }
+    if (error.response?.status === 403) {
+      console.log('🚫 Account banned or suspended');
       await SecureStorage.removeToken();
     }
     console.error('❌ API Error:', error.response?.status, error.response?.data);

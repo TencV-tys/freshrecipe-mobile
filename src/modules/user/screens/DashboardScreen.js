@@ -17,14 +17,13 @@ import RecipeService from '../../recipe/services/recipe.service';
 import RecipeCard from '../../recipe/components/RecipeCard';
 import styles from '../styles/dashboard.styles';
 import colors from '../../shared/constants/colors';
-import { IP } from '../../../api/api';
-// Base URL for images (without /api)
-const BASE_URL = `http://${IP}:5000`;
+import { BASE_IP } from '../../../api/apiConfig';
 
 const DashboardScreen = ({ navigation }) => {
   const { user } = useAuth();
   const [savedRecipes, setSavedRecipes] = useState([]);
-  const [recommendedRecipes, setRecommendedRecipes] = useState([]);
+  const [recentRecipes, setRecentRecipes] = useState([]);
+  const [popularRecipes, setPopularRecipes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -40,21 +39,46 @@ const DashboardScreen = ({ navigation }) => {
 
   const fetchData = async () => {
     setLoading(true);
-    await Promise.all([fetchSavedRecipes(), fetchRecommendedRecipes()]);
+    await Promise.all([
+      fetchSavedRecipes(), 
+      fetchRecentRecipes(), 
+      fetchPopularRecipes()
+    ]);
     setLoading(false);
   };
 
   const fetchSavedRecipes = async () => {
-    const result = await RecipeService.getSavedRecipes();
-    if (result.success) {
-      setSavedRecipes(result.recipes || []);
+    try {
+      const result = await RecipeService.getSavedRecipes();
+      if (result.success) {
+        setSavedRecipes(result.recipes || []);
+      }
+    } catch (error) {
+      console.error('Error fetching saved recipes:', error);
     }
   };
 
-  const fetchRecommendedRecipes = async () => {
-    const result = await RecipeService.getAllRecipes({ limit: 6 });
-    if (result.success) {
-      setRecommendedRecipes(result.recipes || []);
+  const fetchRecentRecipes = async () => {
+    try {
+      const result = await RecipeService.getRecentRecipes(6);
+      if (result.success) {
+        setRecentRecipes(result.recipes || []);
+        console.log('✅ Recent recipes loaded:', result.recipes.length);
+      }
+    } catch (error) {
+      console.error('Error fetching recent recipes:', error);
+    }
+  };
+
+  const fetchPopularRecipes = async () => {
+    try {
+      const result = await RecipeService.getPopularRecipes(6);
+      if (result.success) {
+        setPopularRecipes(result.recipes || []);
+        console.log('✅ Popular recipes loaded:', result.recipes.length);
+      }
+    } catch (error) {
+      console.error('Error fetching popular recipes:', error);
     }
   };
 
@@ -71,6 +95,14 @@ const DashboardScreen = ({ navigation }) => {
 
   const goToScan = () => {
     navigation.navigate('Scan');
+  };
+
+  const goToRecipeFinder = () => {
+    navigation.navigate('Scan');
+  };
+
+  const goToSavedRecipes = () => {
+    navigation.navigate('SavedRecipes');
   };
 
   const StatCard = ({ icon, value, label, onPress, color }) => (
@@ -136,7 +168,7 @@ const DashboardScreen = ({ navigation }) => {
           <TouchableOpacity onPress={goToProfile} style={styles.avatarContainer}>
             {user?.avatar ? (
               <Image 
-                source={{ uri: user.avatar.startsWith('http') ? user.avatar : `${BASE_URL}${user.avatar}` }} 
+                source={{ uri: user.avatar.startsWith('http') ? user.avatar : `${BASE_IP}${user.avatar}` }} 
                 style={styles.profileAvatar} 
               />
             ) : (
@@ -155,7 +187,7 @@ const DashboardScreen = ({ navigation }) => {
             icon="bookmark-outline"
             value={savedRecipes.length}
             label="Saved Recipes"
-            onPress={() => navigation.navigate('SavedRecipes')}
+            onPress={goToSavedRecipes}
             color={colors.primary}
           />
         </View>
@@ -169,7 +201,7 @@ const DashboardScreen = ({ navigation }) => {
                 icon="search-outline"
                 title="Find Recipes"
                 description="Search by name or ingredients"
-                onPress={goToScan}
+                onPress={goToRecipeFinder}
                 color={colors.primary}
               />
             </View>
@@ -186,10 +218,10 @@ const DashboardScreen = ({ navigation }) => {
           <View style={styles.featuresRow}>
             <View style={styles.featuresColumn}>
               <FeatureCard
-                icon="heart-outline"
-                title="Favorites"
-                description="Your saved recipes"
-                onPress={() => navigation.navigate('SavedRecipes')}
+                icon="bookmark-outline"
+                title="Saved Recipes"
+                description="View your saved recipes"
+                onPress={goToSavedRecipes}
                 color="#ff6b6b"
               />
             </View>
@@ -205,35 +237,39 @@ const DashboardScreen = ({ navigation }) => {
           </View>
         </View>
 
-        {/* Personalized Recommendations */}
+        {/* Recently Added Recipes */}
         <View style={styles.section}>
           <SectionHeader
-            title="Personalized Recommendations"
-            onSeeAll={goToScan}
+            title="🆕 Recently Added"
+            onSeeAll={goToRecipeFinder}
           />
           
-          {recommendedRecipes.length === 0 ? (
+          {recentRecipes.length === 0 ? (
             <View style={styles.emptyState}>
               <Icon name="restaurant-outline" size={48} color={colors.gray} />
-              <Text style={styles.emptyStateText}>No recommendations yet</Text>
-              <Text style={styles.emptyStateSubtext}>Try scanning some ingredients!</Text>
+              <Text style={styles.emptyStateText}>No recent recipes</Text>
+              <Text style={styles.emptyStateSubtext}>Check back later for new recipes!</Text>
             </View>
           ) : (
-            recommendedRecipes.slice(0, 3).map(recipe => (
+            recentRecipes.slice(0, 3).map((recipe, index) => (
               <RecipeCard
-                key={recipe.id || recipe._id}
+                key={recipe.id || recipe._id || index}
                 recipe={recipe}
-                onPress={() => navigation.navigate('RecipeDetail', { recipeId: recipe.id || recipe._id })}
+                onPress={() => navigation.navigate('RecipeDetail', { 
+                  recipeId: recipe.id || recipe._id 
+                })}
+                onSave={() => {}}
+                isSaved={savedRecipes.some(saved => (saved.id || saved._id) === (recipe.id || recipe._id))}
               />
             ))
           )}
         </View>
 
-        {/* Recently Saved Section */}
+        {/* Your Saved Recipes */}
         <View style={styles.section}>
           <SectionHeader
-            title="Recently Saved"
-            onSeeAll={savedRecipes.length > 0 ? () => navigation.navigate('SavedRecipes') : null}
+            title="⭐ Your Saved Recipes"
+            onSeeAll={savedRecipes.length > 0 ? goToSavedRecipes : null}
           />
           
           {savedRecipes.length === 0 ? (
@@ -245,37 +281,43 @@ const DashboardScreen = ({ navigation }) => {
               </Text>
             </View>
           ) : (
-            savedRecipes.slice(0, 3).map(recipe => (
+            savedRecipes.slice(0, 3).map((recipe, index) => (
               <RecipeCard
-                key={recipe.id || recipe._id}
+                key={recipe.id || recipe._id || index}
                 recipe={recipe}
-                onPress={() => navigation.navigate('RecipeDetail', { recipeId: recipe.id || recipe._id })}
+                onPress={() => navigation.navigate('RecipeDetail', { 
+                  recipeId: recipe.id || recipe._id 
+                })}
+                onSave={() => {}}
+                isSaved={true}
               />
             ))
           )}
         </View>
 
-        {/* Discover New Recipes */}
+        {/* Popular This Week */}
         <View style={styles.section}>
           <SectionHeader
-            title="Discover New Recipes"
-            onSeeAll={goToScan}
+            title="🔥 Popular This Week"
+            onSeeAll={goToRecipeFinder}
           />
           
-          {recommendedRecipes.length === 0 ? (
+          {popularRecipes.length === 0 ? (
             <View style={styles.emptyState}>
-              <Icon name="restaurant-outline" size={48} color={colors.gray} />
-              <Text style={styles.emptyStateText}>No recipes available</Text>
-              <Text style={styles.emptyStateSubtext}>
-                Check back later for new recipes from our chefs!
-              </Text>
+              <Icon name="flame-outline" size={48} color={colors.gray} />
+              <Text style={styles.emptyStateText}>No popular recipes yet</Text>
+              <Text style={styles.emptyStateSubtext}>Check back later for trending recipes!</Text>
             </View>
           ) : (
-            recommendedRecipes.slice(3, 6).map(recipe => (
+            popularRecipes.slice(0, 3).map((recipe, index) => (
               <RecipeCard
-                key={recipe.id || recipe._id}
+                key={recipe.id || recipe._id || index}
                 recipe={recipe}
-                onPress={() => navigation.navigate('RecipeDetail', { recipeId: recipe.id || recipe._id })}
+                onPress={() => navigation.navigate('RecipeDetail', { 
+                  recipeId: recipe.id || recipe._id 
+                })}
+                onSave={() => {}}
+                isSaved={savedRecipes.some(saved => (saved.id || saved._id) === (recipe.id || recipe._id))}
               />
             ))
           )}

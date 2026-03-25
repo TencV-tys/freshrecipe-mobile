@@ -11,16 +11,21 @@ import {
   Modal,
   StatusBar,
   Keyboard,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import RecipeService from '../services/recipe.service';
 import RecipeCard from '../components/RecipeCard';
 import IngredientScanner from '../components/IngredientScanner';
 import styles from '../styles/recipeFinder.styles';
 import colors from '../../shared/constants/colors';
+import { useAuth } from '../../../context/AuthContext';
 
-const RecipeFinderScreen = ({ navigation }) => {
+const RecipeFinderScreen = () => {
+  const navigation = useNavigation();
+  const { user } = useAuth();
   const [recipes, setRecipes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -66,56 +71,78 @@ const RecipeFinderScreen = ({ navigation }) => {
     Keyboard.dismiss();
   };
 
-  const renderHeader = () => (
-    <View style={styles.header}>
-      <View style={styles.searchContainer}>
-        <Icon name="search" size={20} color={colors.gray} style={styles.searchIcon} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search recipes..."
-          placeholderTextColor={colors.gray}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          returnKeyType="search"
-          onSubmitEditing={() => fetchRecipes()}
-        />
-        {searchQuery ? (
-          <TouchableOpacity onPress={clearSearch}>
-            <Icon name="close-circle" size={20} color={colors.gray} />
-          </TouchableOpacity>
-        ) : null}
-      </View>
+  const handleRecipePress = (recipe) => {
+    const recipeId = recipe.id || recipe._id;
+    navigation.navigate('RecipeDetail', { recipeId });
+  };
 
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false} 
-        style={styles.filterContainer}
-        contentContainerStyle={styles.filterContent}
-      >
-        <TouchableOpacity
-          style={[styles.filterChip, !selectedMealType && styles.filterChipActive]}
-          onPress={() => setSelectedMealType('')}
+  const handleSave = async (recipe) => {
+    const recipeId = recipe.id || recipe._id;
+    const result = await RecipeService.toggleSaveRecipe(recipeId);
+    if (result.success) {
+      await fetchRecipes();
+      Alert.alert('Success', result.isSaved ? 'Recipe saved!' : 'Recipe removed from saved');
+    } else {
+      Alert.alert('Error', result.error || 'Failed to save recipe');
+    }
+  };
+
+  const isRecipeSaved = (recipeId) => {
+    return user?.savedRecipes?.includes(recipeId) || false;
+  };
+
+  const renderHeader = () => (
+    <>
+      <View style={styles.searchSection}>
+        <View style={styles.searchContainer}>
+          <Icon name="search" size={20} color={colors.gray} style={styles.searchIcon} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search recipes..."
+            placeholderTextColor={colors.gray}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            returnKeyType="search"
+            onSubmitEditing={() => fetchRecipes()}
+          />
+          {searchQuery ? (
+            <TouchableOpacity onPress={clearSearch}>
+              <Icon name="close-circle" size={20} color={colors.gray} />
+            </TouchableOpacity>
+          ) : null}
+        </View>
+
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false} 
+          style={styles.filterContainer}
+          contentContainerStyle={styles.filterContent}
         >
-          <Text style={[styles.filterText, !selectedMealType && styles.filterTextActive]}>All</Text>
-        </TouchableOpacity>
-        {mealTypes.map((type) => (
           <TouchableOpacity
-            key={type}
-            style={[styles.filterChip, selectedMealType === type && styles.filterChipActive]}
-            onPress={() => setSelectedMealType(type)}
+            style={[styles.filterChip, !selectedMealType && styles.filterChipActive]}
+            onPress={() => setSelectedMealType('')}
           >
-            <Text style={[styles.filterText, selectedMealType === type && styles.filterTextActive]}>
-              {type}
-            </Text>
+            <Text style={[styles.filterText, !selectedMealType && styles.filterTextActive]}>All</Text>
           </TouchableOpacity>
-        ))}
-      </ScrollView>
+          {mealTypes.map((type) => (
+            <TouchableOpacity
+              key={type}
+              style={[styles.filterChip, selectedMealType === type && styles.filterChipActive]}
+              onPress={() => setSelectedMealType(type)}
+            >
+              <Text style={[styles.filterText, selectedMealType === type && styles.filterTextActive]}>
+                {type}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
 
       <TouchableOpacity style={styles.scannerButton} onPress={() => setShowScanner(true)}>
         <Icon name="camera" size={24} color={colors.white} />
         <Text style={styles.scannerButtonText}>Scan Ingredients</Text>
       </TouchableOpacity>
-    </View>
+    </>
   );
 
   const renderEmptyState = () => (
@@ -147,13 +174,19 @@ const RecipeFinderScreen = ({ navigation }) => {
     return (
       <FlatList
         data={recipes}
-        keyExtractor={(item) => item.id?.toString() || item._id?.toString()}
-        renderItem={({ item }) => (
-          <RecipeCard
-            recipe={item}
-            onPress={() => navigation.navigate('RecipeDetail', { recipeId: item.id || item._id })}
-          />
-        )}
+        keyExtractor={(item) => (item.id || item._id)?.toString()}
+        renderItem={({ item }) => {
+          const recipeId = item.id || item._id;
+          const saved = isRecipeSaved(recipeId);
+          return (
+            <RecipeCard
+              recipe={item}
+              onPress={() => handleRecipePress(item)}
+              onSave={() => handleSave(item)}
+              isSaved={saved}
+            />
+          );
+        }}
         refreshControl={
           <RefreshControl 
             refreshing={refreshing} 
@@ -164,6 +197,7 @@ const RecipeFinderScreen = ({ navigation }) => {
         }
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        ListHeaderComponent={renderHeader}
       />
     );
   };
@@ -171,7 +205,6 @@ const RecipeFinderScreen = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.white} />
-      {renderHeader()}
       {renderContent()}
 
       <Modal 

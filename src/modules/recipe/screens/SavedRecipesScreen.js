@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   StatusBar,
+  TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -55,10 +56,24 @@ const SavedRecipesScreen = ({ navigation }) => {
     </View>
   );
 
+  const renderHeader = () => (
+    <View style={styles.header}>
+      <TouchableOpacity 
+        style={styles.backButton} 
+        onPress={() => navigation.goBack()}
+      >
+        <Icon name="arrow-back" size={24} color={colors.black} />
+      </TouchableOpacity>
+      <Text style={styles.headerTitle}>Saved Recipes</Text>
+      <View style={styles.headerRight} />
+    </View>
+  );
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
         <StatusBar barStyle="dark-content" backgroundColor={colors.white} />
+        {renderHeader()}
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>Loading saved recipes...</Text>
@@ -70,6 +85,7 @@ const SavedRecipesScreen = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.white} />
+      {renderHeader()}
       
       {recipes.length === 0 ? (
         renderEmptyState()

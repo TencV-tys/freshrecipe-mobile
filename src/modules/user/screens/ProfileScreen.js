@@ -14,8 +14,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useAuth } from '../../../context/AuthContext';
 import api from '../../../api/api';
+import { BASE_IP } from '../../../api/apiConfig';
 import NotificationService from '../../notification/services/notification.service';
-import UserService from '../services/user.service'; // Import UserService
+import UserService from '../services/user.service';
 
 const colors = {
   primary: '#ff6b6b',
@@ -68,18 +69,14 @@ const ProfileScreen = ({ navigation }) => {
           text: 'Logout',
           onPress: async () => {
             try {
-              // Call backend logout to invalidate session
               await UserService.logout();
-              // Call context logout to clear local state
               await logout();
-              // Navigate to login screen
               navigation.reset({
                 index: 0,
                 routes: [{ name: 'Login' }],
               });
             } catch (error) {
               console.error('Logout error:', error);
-              // Even if backend fails, still logout locally
               await logout();
               navigation.reset({
                 index: 0,
@@ -93,7 +90,6 @@ const ProfileScreen = ({ navigation }) => {
     );
   };
 
-  // Function to navigate to Chat tab
   const goToChatbot = () => {
     const parent = navigation.getParent();
     if (parent) {
@@ -160,8 +156,8 @@ const ProfileScreen = ({ navigation }) => {
           <View style={styles.avatarWrapper}>
             {user?.avatar ? (
               <Image 
-                source={{ uri: user.avatar.startsWith('http') ? user.avatar : `http://10.205.101.2:5000${user.avatar}` }} 
-                style={styles.profileAvatar} 
+                source={{ uri: user.avatar.startsWith('http') ? user.avatar : `${BASE_IP}${user.avatar}` }} 
+                style={styles.profileAvatar}  
               />
             ) : (
               <View style={styles.profileAvatarPlaceholder}>
@@ -186,22 +182,14 @@ const ProfileScreen = ({ navigation }) => {
           </View>
         </View>
 
-        {/* Stats Cards */}
+        {/* Stats Cards - Only Saved Recipes */}
         <View style={styles.statsContainer}>
           <StatCard
             icon="bookmark-outline"
             value={stats.savedRecipes}
-            label="Saved"
+            label="Saved Recipes"
             onPress={() => navigation.navigate('SavedRecipes')}
             color={colors.primary}
-          />
-          <View style={styles.statDivider} />
-          <StatCard
-            icon="heart-outline"
-            value={stats.savedRecipes}
-            label="Favorites"
-            onPress={() => navigation.navigate('SavedRecipes')}
-            color={colors.secondary}
           />
         </View>
 
@@ -377,7 +365,7 @@ const styles = StyleSheet.create({
   },
   statsContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    justifyContent: 'center',
     paddingVertical: 20,
     marginHorizontal: 20,
     marginTop: 20,
@@ -411,10 +399,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.gray,
     marginTop: 4,
-  },
-  statDivider: {
-    width: 1,
-    backgroundColor: colors.lightGray,
   },
   menuSection: {
     paddingHorizontal: 20,
