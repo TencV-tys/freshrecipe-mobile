@@ -27,6 +27,25 @@ const NotificationCard = ({ notification, onPress, onLongPress, onMarkRead, onDe
     }
   };
 
+  // Helper to get date from either createdAt or created_at
+  const getNotificationDate = () => {
+    const dateString = notification.createdAt || notification.created_at;
+    if (!dateString) {
+      console.warn('Notification missing date:', notification);
+      return 'Date not available';
+    }
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) {
+      return 'Invalid date';
+    }
+    return `${date.toLocaleDateString()} at ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+  };
+
+  // Helper to get id from either id or _id
+  const getNotificationId = () => {
+    return notification.id || notification._id;
+  };
+
   return (
     <TouchableOpacity
       style={[
@@ -59,15 +78,14 @@ const NotificationCard = ({ notification, onPress, onLongPress, onMarkRead, onDe
           {notification.message}
         </Text>
         <Text style={styles.date}>
-          {new Date(notification.createdAt).toLocaleDateString()} at{' '}
-          {new Date(notification.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          {getNotificationDate()}
         </Text>
       </View>
       
       {!selectMode && !notification.isRead && (
         <TouchableOpacity
           style={styles.markReadButton}
-          onPress={() => onMarkRead(notification.id)}
+          onPress={() => onMarkRead(getNotificationId())}
         >
           <Icon name="ellipse" size={12} color={colors.primary} />
         </TouchableOpacity>

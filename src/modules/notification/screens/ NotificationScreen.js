@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Alert,
   StatusBar,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -22,18 +23,55 @@ const NotificationScreen = ({ navigation }) => {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const [selectedMode, setSelectedMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  const fetchNotifications = async () => {
-    const result = await NotificationService.getNotifications();
-    if (result.success) {
-      setNotifications(result.data);
-      const unread = result.data.filter(n => !n.isRead).length;
-      setUnreadCount(unread);
+  // Helper to get notification ID (handles both id and _id)
+  const getNotificationId = (notification) => {
+    return notification?.id || notification?._id;
+  };
+
+  const fetchNotifications = async (showLoading = true) => {
+    if (showLoading) setLoading(true);
+    setError(null);
+    
+    try {
+      const result = await NotificationService.getNotifications();
+      if (result.success) {
+        console.log('📱 Notifications received:', result.data?.length || 0);
+        
+        // Validate each notification has required fields
+        const validNotifications = (result.data || []).filter(n => {
+          const id = getNotificationId(n);
+          if (!id) {
+            console.warn('Notification missing ID:', n);
+            return false;
+          }
+          return true;
+        });
+        
+        setNotifications(validNotifications);
+        const unread = validNotifications.filter(n => !n.isRead).length;
+        setUnreadCount(unread);
+        
+        // Fade in animation when data loads
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }).start();
+      } else {
+        setError(result.error || 'Failed to load notifications');
+      }
+    } catch (err) {
+      setError('Network error. Please check your connection.');
+      console.error('Fetch error:', err);
+    } finally {
+      if (showLoading) setLoading(false);
     }
-    setLoading(false);
   };
 
   useFocusEffect(
@@ -41,24 +79,30 @@ const NotificationScreen = ({ navigation }) => {
       fetchNotifications();
       setSelectedMode(false);
       setSelectedIds([]);
+      fadeAnim.setValue(0);
     }, [])
   );
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchNotifications();
+    await fetchNotifications(false);
     setRefreshing(false);
     setSelectedMode(false);
     setSelectedIds([]);
+  };
+
+  const handleRetry = () => {
+    fetchNotifications();
   };
 
   const handleMarkAsRead = async (notificationId) => {
     const result = await NotificationService.markAsRead(notificationId);
     if (result.success) {
       setNotifications(prev =>
-        prev.map(n =>
-          n.id === notificationId ? { ...n, isRead: true } : n
-        )
+        prev.map(n => {
+          const id = getNotificationId(n);
+          return id === notificationId ? { ...n, isRead: true } : n;
+        })
       );
       setUnreadCount(prev => Math.max(0, prev - 1));
     }
@@ -105,10 +149,15 @@ const NotificationScreen = ({ navigation }) => {
             const result = await NotificationService.deleteNotification(notificationId);
             if (result.success) {
               setNotifications(prev =>
-                prev.filter(n => n.id !== notificationId)
+                prev.filter(n => {
+                  const id = getNotificationId(n);
+                  return id !== notificationId;
+                })
               );
-              // Update unread count if deleted notification was unread
-              const deleted = notifications.find(n => n.id === notificationId);
+              const deleted = notifications.find(n => {
+                const id = getNotificationId(n);
+                return id === notificationId;
+              });
               if (deleted && !deleted.isRead) {
                 setUnreadCount(prev => Math.max(0, prev - 1));
               }
@@ -146,12 +195,15 @@ const NotificationScreen = ({ navigation }) => {
             }
             if (successCount > 0) {
               setNotifications(prev =>
-                prev.filter(n => !selectedIds.includes(n.id))
+                prev.filter(n => {
+                  const id = getNotificationId(n);
+                  return !selectedIds.includes(id);
+                })
               );
-              // Update unread count
-              const deletedUnread = notifications.filter(
-                n => selectedIds.includes(n.id) && !n.isRead
-              ).length;
+              const deletedUnread = notifications.filter(n => {
+                const id = getNotificationId(n);
+                return selectedIds.includes(id) && !n.isRead;
+              }).length;
               setUnreadCount(prev => Math.max(0, prev - deletedUnread));
               setSelectedIds([]);
               setSelectedMode(false);
@@ -164,13 +216,14 @@ const NotificationScreen = ({ navigation }) => {
   };
 
   const handlePress = (notification) => {
+    const notificationId = getNotificationId(notification);
+    
     if (selectedMode) {
-      handleSelect(notification.id);
+      handleSelect(notificationId);
     } else {
       if (!notification.isRead) {
-        handleMarkAsRead(notification.id);
+        handleMarkAsRead(notificationId);
       }
-      // Optional: Navigate based on notification type
       if (notification.type === 'warning' || notification.type === 'suspension' || notification.type === 'ban') {
         Alert.alert(notification.title, notification.message);
       }
@@ -179,7 +232,8 @@ const NotificationScreen = ({ navigation }) => {
 
   const handleLongPress = (notification) => {
     setSelectedMode(true);
-    handleSelect(notification.id);
+    const notificationId = getNotificationId(notification);
+    handleSelect(notificationId);
   };
 
   const exitSelectionMode = () => {
@@ -187,6 +241,7 @@ const NotificationScreen = ({ navigation }) => {
     setSelectedIds([]);
   };
 
+  // Loading state
   if (loading) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
@@ -199,13 +254,34 @@ const NotificationScreen = ({ navigation }) => {
     );
   }
 
+  // Error state with retry button
+  if (error) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <StatusBar barStyle="dark-content" backgroundColor={colors.white} />
+        <View style={styles.errorContainer}>
+          <Icon name="alert-circle-outline" size={64} color={colors.error} />
+          <Text style={styles.errorTitle}>Failed to Load</Text>
+          <Text style={styles.errorMessage}>{error}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={handleRetry}>
+            <Icon name="refresh-outline" size={20} color={colors.white} />
+            <Text style={styles.retryButtonText}>Try Again</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.white} />
       
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => selectedMode ? exitSelectionMode() : navigation.goBack()} style={styles.backButton}>
+        <TouchableOpacity 
+          onPress={() => selectedMode ? exitSelectionMode() : navigation.goBack()} 
+          style={styles.backButton}
+        >
           <Icon name={selectedMode ? "close" : "arrow-back"} size={24} color={colors.black} />
         </TouchableOpacity>
         
@@ -229,31 +305,36 @@ const NotificationScreen = ({ navigation }) => {
       {notifications.length === 0 ? (
         <EmptyNotifications />
       ) : (
-        <FlatList
-          data={notifications}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={({ item }) => (
-            <NotificationCard
-              notification={item}
-              onPress={handlePress}
-              onLongPress={handleLongPress}
-              onMarkRead={handleMarkAsRead}
-              onDelete={handleDelete}
-              selected={selectedIds.includes(item.id)}
-              selectMode={selectedMode}
-            />
-          )}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={[colors.primary]}
-              tintColor={colors.primary}
-            />
-          }
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-        />
+        <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
+          <FlatList
+            data={notifications}
+            keyExtractor={(item) => {
+              const id = getNotificationId(item);
+              return id ? id.toString() : Math.random().toString();
+            }}
+            renderItem={({ item }) => (
+              <NotificationCard
+                notification={item}
+                onPress={handlePress}
+                onLongPress={handleLongPress}
+                onMarkRead={handleMarkAsRead}
+                onDelete={handleDelete}
+                selected={selectedIds.includes(getNotificationId(item))}
+                selectMode={selectedMode}
+              />
+            )}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={[colors.primary]}
+                tintColor={colors.primary}
+              />
+            }
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+          />
+        </Animated.View>
       )}
     </SafeAreaView>
   );
