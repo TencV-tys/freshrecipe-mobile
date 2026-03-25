@@ -202,6 +202,12 @@ const ProfileScreen = ({ navigation }) => {
             onPress={() => navigation.navigate('SavedRecipes')}
           />
           <MenuItem
+  icon="sparkles-outline"
+  title="My AI Recipes"
+  onPress={() => navigation.navigate('MyGeneratedRecipes')}
+  color={colors.secondary}
+/>
+          <MenuItem
             icon="settings-outline"
             title="Settings"
             onPress={() => navigation.navigate('SettingsMain')}

@@ -19,6 +19,8 @@ import HelpSupportScreen from '../modules/user/screens/HelpSupportScreen';
 import PrivacyPolicyScreen from '../modules/user/screens/PrivacyPolicyScreen';
 import TermsOfServiceScreen from '../modules/user/screens/TermsOfServiceScreen';
 import NotificationScreen from '../modules/notification/screens/ NotificationScreen';
+import MyGeneratedRecipesScreen from '../modules/user/screens/MyGeneratedRecipes';
+import GeneratedRecipeDetailScreen from '../modules/user/screens/GeneratedRecipeDetail';
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
 
@@ -59,6 +61,8 @@ const ProfileStack = () => {
       <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
       <Stack.Screen name="TermsOfService" component={TermsOfServiceScreen} />
       <Stack.Screen name="Notifications" component={NotificationScreen} />
+      <Stack.Screen name="MyGeneratedRecipes" component={MyGeneratedRecipesScreen} /> 
+      <Stack.Screen name="GeneratedRecipeDetail" component={GeneratedRecipeDetailScreen} />
     </Stack.Navigator>
   );
 };

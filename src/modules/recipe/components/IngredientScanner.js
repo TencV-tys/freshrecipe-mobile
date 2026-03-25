@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import Icon from 'react-native-vector-icons/Ionicons';
-import api from '../../../api/api';
+import RecipeService from '../../recipe/services/recipe.service';
 import colors from '../../shared/constants/colors';
 
 const IngredientScanner = ({ onClose, onScanComplete, navigation }) => {
@@ -24,6 +24,8 @@ const IngredientScanner = ({ onClose, onScanComplete, navigation }) => {
   const [loading, setLoading] = useState(false);
   const [suggestedRecipes, setSuggestedRecipes] = useState([]);
   const [showRecipes, setShowRecipes] = useState(false);
+  const [generatedRecipe, setGeneratedRecipe] = useState(null);
+  const [showGeneratedRecipe, setShowGeneratedRecipe] = useState(false);
 
   // Open camera
   const takePhoto = async () => {
@@ -65,29 +67,23 @@ const IngredientScanner = ({ onClose, onScanComplete, navigation }) => {
     }
   };
 
-  // Detect ingredients from image using backend
+  // Detect ingredients from image using RecipeService
   const detectIngredients = async (imageUri) => {
     setStep('scanning');
     setLoading(true);
     
     try {
-      // Create form data
-      const formData = new FormData();
-      formData.append('image', {
-        uri: imageUri,
-        type: 'image/jpeg',
-        name: 'scan.jpg',
-      });
+      const result = await RecipeService.scanIngredients(imageUri);
       
-      // Call backend scan endpoint
-      const response = await api.post('/recipes/scan', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      
-      setDetectedIngredients(response.data.detected);
-      setSelectedIngredients(response.data.detected.map(i => i.name));
-      setSuggestedRecipes(response.data.recipes);
-      setStep('results');
+      if (result.success) {
+        setDetectedIngredients(result.data.detected);
+        setSelectedIngredients(result.data.detected.map(i => i.name));
+        setSuggestedRecipes(result.data.recipes);
+        setStep('results');
+      } else {
+        Alert.alert('Error', result.error || 'Failed to detect ingredients');
+        setStep('select');
+      }
     } catch (error) {
       console.error('Detection error:', error);
       Alert.alert('Error', 'Failed to detect ingredients. Please try again.');
@@ -106,12 +102,14 @@ const IngredientScanner = ({ onClose, onScanComplete, navigation }) => {
     
     setLoading(true);
     try {
-      const response = await api.post('/recipes/find-by-ingredients', {
-        ingredients: selectedIngredients,
-      });
+      const result = await RecipeService.findRecipesByIngredients(selectedIngredients);
       
-      setSuggestedRecipes(response.data);
-      setShowRecipes(true);
+      if (result.success) {
+        setSuggestedRecipes(result.recipes);
+        setShowRecipes(true);
+      } else {
+        Alert.alert('Error', result.error || 'Failed to find recipes');
+      }
     } catch (error) {
       console.error('Find recipes error:', error);
       Alert.alert('Error', 'Failed to find recipes');
@@ -119,6 +117,54 @@ const IngredientScanner = ({ onClose, onScanComplete, navigation }) => {
       setLoading(false);
     }
   };
+
+  // Generate Filipino recipe using AI
+  const generateFilipinoRecipe = async () => {
+    if (selectedIngredients.length === 0) {
+      Alert.alert('No ingredients', 'Please select at least one ingredient');
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const result = await RecipeService.generateFilipinoRecipe(selectedIngredients);
+      
+      if (result.success) {
+        setGeneratedRecipe(result.recipe);
+        setShowGeneratedRecipe(true);
+      } else {
+        Alert.alert('Error', result.error || 'Failed to generate recipe');
+      }
+    } catch (error) {
+      console.error('Generate recipe error:', error);
+      Alert.alert('Error', 'Failed to generate recipe');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+   // Save generated recipe to user's collection
+const saveGeneratedRecipe = async () => {
+  if (!generatedRecipe) return;
+  
+  setLoading(true);
+  try {
+    const result = await RecipeService.saveGeneratedRecipe(generatedRecipe);
+    
+    if (result.success) {
+      Alert.alert('Saved!', 'AI-generated recipe added to your collection');
+      setShowGeneratedRecipe(false);
+      onClose();
+    } else {
+      Alert.alert('Error', result.error || 'Failed to save recipe');
+    }
+  } catch (error) {
+    console.error('Save error:', error);
+    Alert.alert('Error', 'Failed to save recipe');
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Toggle ingredient selection
   const toggleIngredient = (ingredientName) => {
@@ -256,6 +302,26 @@ const IngredientScanner = ({ onClose, onScanComplete, navigation }) => {
               )}
             </TouchableOpacity>
           </View>
+
+          {/* Generate Filipino Recipe Button */}
+          <View style={styles.generateContainer}>
+            <TouchableOpacity
+              style={[styles.generateButton, !selectedIngredients.length && styles.generateButtonDisabled]}
+              onPress={generateFilipinoRecipe}
+              disabled={!selectedIngredients.length || loading}
+            >
+              {loading ? (
+                <ActivityIndicator color={colors.white} />
+              ) : (
+                <>
+                  <Icon name="sparkles" size={20} color={colors.white} />
+                  <Text style={styles.generateButtonText}>
+                    Generate Filipino Recipe
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
         </ScrollView>
 
         {/* Recipe Suggestions Modal */}
@@ -288,14 +354,14 @@ const IngredientScanner = ({ onClose, onScanComplete, navigation }) => {
             ) : (
               <FlatList
                 data={suggestedRecipes}
-                keyExtractor={(item) => item.id.toString()}
+                keyExtractor={(item) => (item.id || item._id)?.toString()}
                 renderItem={({ item }) => (
                   <TouchableOpacity 
                     style={styles.recipeCard}
                     onPress={() => {
                       onScanComplete(selectedIngredients);
                       onClose();
-                      navigation?.navigate('RecipeDetail', { recipeId: item.id });
+                      navigation?.navigate('RecipeDetail', { recipeId: item.id || item._id });
                     }}
                   >
                     {item.image && (
@@ -317,6 +383,71 @@ const IngredientScanner = ({ onClose, onScanComplete, navigation }) => {
               />
             )}
           </View>
+        </Modal>
+
+        {/* Generated Recipe Modal */}
+        <Modal visible={showGeneratedRecipe} animationType="slide" presentationStyle="fullScreen">
+          <ScrollView style={styles.generatedContainer}>
+            <View style={styles.generatedHeader}>
+              <TouchableOpacity onPress={() => setShowGeneratedRecipe(false)}>
+                <Icon name="arrow-back" size={28} color={colors.black} />
+              </TouchableOpacity>
+              <Text style={styles.generatedTitle}>✨ AI-Generated Recipe</Text>
+              <TouchableOpacity onPress={saveGeneratedRecipe}>
+                <Icon name="bookmark-outline" size={28} color={colors.primary} />
+              </TouchableOpacity>
+            </View>
+            
+            {generatedRecipe && (
+              <>
+                <Text style={styles.recipeTitle}>{generatedRecipe.title}</Text>
+                <Text style={styles.recipeDescription}>{generatedRecipe.description}</Text>
+                
+                <View style={styles.metaRow}>
+                  <View style={styles.metaItem}>
+                    <Icon name="time-outline" size={16} color={colors.gray} />
+                    <Text>{generatedRecipe.prepTime + generatedRecipe.cookTime} min</Text>
+                  </View>
+                  <View style={styles.metaItem}>
+                    <Icon name="restaurant-outline" size={16} color={colors.gray} />
+                    <Text>{generatedRecipe.mealType}</Text>
+                  </View>
+                  <View style={styles.metaItem}>
+                    <Icon name="flame-outline" size={16} color={colors.gray} />
+                    <Text>{generatedRecipe.difficulty}</Text>
+                  </View>
+                  <View style={styles.metaItem}>
+                    <Icon name="people-outline" size={16} color={colors.gray} />
+                    <Text>{generatedRecipe.servings} servings</Text>
+                  </View>
+                </View>
+                
+                <View style={styles.section}>
+                  <Text style={styles.sectionTitle}>🍳 Ingredients</Text>
+                  {generatedRecipe.ingredients?.map((ing, i) => (
+                    <View key={i} style={styles.ingredientRow}>
+                      <Text>• {ing.quantity} {ing.unit} {ing.name}</Text>
+                    </View>
+                  ))}
+                </View>
+                
+                <View style={styles.section}>
+                  <Text style={styles.sectionTitle}>📝 Instructions</Text>
+                  {generatedRecipe.instructions?.map((inst, i) => (
+                    <View key={i} style={styles.instructionRow}>
+                      <View style={styles.stepNumber}><Text>{inst.step || i+1}</Text></View>
+                      <Text style={styles.instructionText}>{inst.text}</Text>
+                    </View>
+                  ))}
+                </View>
+                
+                <TouchableOpacity style={styles.saveButton} onPress={saveGeneratedRecipe}>
+                  <Icon name="bookmark" size={20} color={colors.white} />
+                  <Text style={styles.saveButtonText}>Save to My Recipes</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </ScrollView>
         </Modal>
       </View>
     );
@@ -472,7 +603,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
     marginTop: 20,
-    marginBottom: 30,
+    marginBottom: 16,
   },
   retakeButton: {
     flex: 1,
@@ -503,6 +634,27 @@ const styles = StyleSheet.create({
     backgroundColor: colors.gray,
   },
   findButtonText: {
+    color: colors.white,
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  generateContainer: {
+    marginTop: 8,
+    marginBottom: 30,
+  },
+  generateButton: {
+    flexDirection: 'row',
+    backgroundColor: colors.secondary,
+    padding: 15,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+  },
+  generateButtonDisabled: {
+    backgroundColor: colors.gray,
+  },
+  generateButtonText: {
     color: colors.white,
     fontSize: 16,
     fontWeight: 'bold',
@@ -603,6 +755,91 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 10,
     marginRight: 6,
+  },
+  generatedContainer: {
+    flex: 1,
+    backgroundColor: colors.white,
+    padding: 20,
+  },
+  generatedHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 50,
+    paddingBottom: 20,
+    marginBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.lightGray,
+  },
+  generatedTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: colors.primary,
+  },
+  recipeTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: colors.black,
+    marginBottom: 12,
+  },
+  recipeDescription: {
+    fontSize: 14,
+    color: colors.gray,
+    marginBottom: 16,
+    lineHeight: 20,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 24,
+  },
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 16,
+    gap: 4,
+  },
+  section: {
+    marginBottom: 24,
+  },
+  ingredientRow: {
+    flexDirection: 'row',
+    marginBottom: 8,
+  },
+  instructionRow: {
+    flexDirection: 'row',
+    marginBottom: 12,
+  },
+  stepNumber: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  instructionText: {
+    flex: 1,
+    fontSize: 14,
+    color: colors.black,
+    lineHeight: 20,
+  },
+  saveButton: {
+    flexDirection: 'row',
+    backgroundColor: colors.primary,
+    padding: 16,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 20,
+    marginBottom: 40,
+  },
+  saveButtonText: {
+    color: colors.white,
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 

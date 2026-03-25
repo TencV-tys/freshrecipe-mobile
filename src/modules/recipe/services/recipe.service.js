@@ -1,6 +1,6 @@
 import api from '../../../api/api';
 
-class RecipeService {
+class RecipeService { 
   async getAllRecipes(filters = {}) {
     try {
       const { mealType, difficulty, search, limit = 20, sort = 'newest' } = filters;
@@ -56,7 +56,6 @@ class RecipeService {
     }
   }
 
-  // ✅ Fix: This should call /users/saved/:recipeId (user route)
   async toggleSaveRecipe(recipeId) {
     try {
       const response = await api.post(`/users/saved/${recipeId}`);
@@ -90,6 +89,94 @@ class RecipeService {
       return { success: false, recipes: [], error: error.response?.data?.message };
     }
   }
+
+  // ✅ Scan method for ingredient detection
+  async scanIngredients(imageUri) {
+    try {
+      const formData = new FormData();
+      formData.append('image', {
+        uri: imageUri,
+        type: 'image/jpeg',
+        name: 'scan_photo.jpg',
+      });
+
+      const response = await api.post('/recipes/scan', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Failed to scan ingredients:', error);
+      return { 
+        success: false, 
+        error: error.response?.data?.message || 'Failed to scan ingredients',
+        data: null
+      };
+    }
+  }
+
+  // ✅ Generate Filipino recipe from ingredients
+  async generateFilipinoRecipe(ingredients) {
+    try {
+      const response = await api.post('/recipes/generate-from-ingredients', {
+        ingredients,
+      });
+      return { success: true, recipe: response.data.recipe };
+    } catch (error) {
+      console.error('Failed to generate recipe:', error);
+      return { 
+        success: false, 
+        error: error.response?.data?.message || 'Failed to generate recipe',
+        recipe: null
+      };
+    }
+  }
+
+  // ✅ NEW: Save AI-generated recipe to user's collection
+  async saveGeneratedRecipe(recipeData) {
+    try {
+      const response = await api.post('/users/save-generated-recipe', {
+        recipe: recipeData
+      });
+      return { success: true, recipe: response.data.recipe };
+    } catch (error) {
+      console.error('Failed to save generated recipe:', error);
+      return { 
+        success: false, 
+        error: error.response?.data?.message || 'Failed to save recipe',
+        recipe: null
+      };
+    }
+  }
+
+  // ✅ NEW: Get all user-generated recipes
+  async getUserGeneratedRecipes() {
+    try {
+      const response = await api.get('/users/generated-recipes');
+      return { success: true, recipes: response.data };
+    } catch (error) {
+      console.error('Failed to get user generated recipes:', error);
+      return { success: false, recipes: [], error: error.response?.data?.message };
+    }
+  }
+
+  // ✅ NEW: Delete a user-generated recipe
+  async deleteUserGeneratedRecipe(recipeId) {
+    try {
+      const response = await api.delete(`/users/generated-recipes/${recipeId}`);
+      return { success: true, message: response.data.message };
+    } catch (error) {
+      console.error('Failed to delete user generated recipe:', error);
+      return { 
+        success: false, 
+        error: error.response?.data?.message || 'Failed to delete recipe'
+      };
+    }
+  }
+
+
 }
 
 export default new RecipeService();
