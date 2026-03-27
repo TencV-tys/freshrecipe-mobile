@@ -7,10 +7,11 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
   StatusBar,
   Keyboard,
   TouchableWithoutFeedback,
+  Animated,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
@@ -18,7 +19,75 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import ChatbotService from '../services/chatbot.service';
 import colors from '../../shared/constants/colors';
 
-const ChatbotScreen = () => {
+const { width } = Dimensions.get('window');
+
+const theme = {
+  primary: '#ff6b6b',
+  primaryDark: '#e85555',
+  primaryFaint: '#fff0f0',
+  primaryLight: '#ff8e8e',
+  secondary: '#ff9f43',
+  secondaryFaint: '#fff8f0',
+  teal: '#00c9a7',
+  tealFaint: '#f0fdf9',
+  blue: '#33b5e5',
+  blueFaint: '#f0f8ff',
+  dark: '#1a1a2e',
+  gray: '#8a8a9a',
+  lightGray: '#f4f4f8',
+  white: '#ffffff',
+};
+
+// Pressable with scale feedback (same as HomeScreen)
+const PressableScale = ({ onPress, style, children, activeOpacity = 0.82 }) => {
+  const scale = useRef(new Animated.Value(1)).current;
+  const onPressIn = () => Animated.spring(scale, { toValue: 0.95, useNativeDriver: true, tension: 200, friction: 10 }).start();
+  const onPressOut = () => Animated.spring(scale, { toValue: 1, useNativeDriver: true, tension: 200, friction: 10 }).start();
+  return (
+    <Animated.View style={[{ transform: [{ scale }] }, style]}>
+      <TouchableOpacity onPress={onPress} onPressIn={onPressIn} onPressOut={onPressOut} activeOpacity={activeOpacity}>
+        {children}
+      </TouchableOpacity>
+    </Animated.View>
+  );
+};
+
+// Custom hook for typing animation
+const useTypingAnimation = () => {
+  const typingAnim = useRef(new Animated.Value(0)).current;
+  
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(typingAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+        Animated.timing(typingAnim, { toValue: 0, duration: 600, useNativeDriver: true }),
+      ])
+    ).start();
+    
+    return () => typingAnim.stopAnimation();
+  }, [typingAnim]);
+  
+  return typingAnim;
+};
+
+// Custom hook for message animation
+const useMessageAnimation = (index) => {
+  const messageAnim = useRef(new Animated.Value(0)).current;
+  
+  useEffect(() => {
+    Animated.spring(messageAnim, { 
+      toValue: 1, 
+      tension: 55, 
+      friction: 9, 
+      useNativeDriver: true,
+      delay: index * 50
+    }).start();
+  }, [messageAnim, index]);
+  
+  return messageAnim;
+};
+
+const ChatbotScreen = ({ navigation }) => {
   const [messages, setMessages] = useState([
     {
       id: '1',
@@ -33,15 +102,21 @@ const ChatbotScreen = () => {
   const flatListRef = useRef();
   const tabBarHeight = useBottomTabBarHeight();
 
+  // Animation values (matching HomeScreen pattern)
+  const headerAnim = useRef(new Animated.Value(0)).current;
+  const suggestionsAnim = useRef(new Animated.Value(0)).current;
+  const inputAnim = useRef(new Animated.Value(0)).current;
+
   const suggestions = [
-    'How to make chicken adobo?',
-    'What can I cook with eggs?',
-    'Healthy Filipino dishes',
-    'How to save recipes?',
-    'What is sinigang?',
-    'Cooking tips for beginners',
+    { icon: 'restaurant', text: 'How to make chicken adobo?', color: theme.primary, bg: theme.primaryFaint },
+    { icon: 'egg', text: 'What can I cook with eggs?', color: theme.secondary, bg: theme.secondaryFaint },
+    { icon: 'heart', text: 'Healthy Filipino dishes', color: theme.teal, bg: theme.tealFaint },
+    { icon: 'bookmark', text: 'How to save recipes?', color: theme.primary, bg: theme.primaryFaint },
+    { icon: 'fish', text: 'What is sinigang?', color: theme.blue, bg: theme.blueFaint },
+    { icon: 'bulb', text: 'Cooking tips for beginners', color: theme.secondary, bg: theme.secondaryFaint },
   ];
 
+  // Listen for keyboard visibility
   useEffect(() => {
     const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => {
       setKeyboardVisible(true);
@@ -57,6 +132,21 @@ const ChatbotScreen = () => {
   }, []);
 
   useEffect(() => {
+    // Header entrance animation
+    Animated.spring(headerAnim, { toValue: 1, tension: 50, friction: 9, useNativeDriver: true }).start();
+    
+    // Suggestions stagger animation (matching quick actions pattern)
+    Animated.stagger(65,
+      suggestions.map(() => 
+        Animated.spring(suggestionsAnim, { toValue: 1, tension: 65, friction: 9, useNativeDriver: true })
+      )
+    ).start();
+    
+    // Input animation
+    Animated.timing(inputAnim, { toValue: 1, duration: 480, delay: 200, useNativeDriver: true }).start();
+  }, []);
+
+  useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
@@ -67,7 +157,7 @@ const ChatbotScreen = () => {
   };
 
   const handleSend = async () => {
-    if (!inputText.trim()) return;
+    if (!inputText.trim() || isTyping) return;
 
     const userMessage = {
       id: Date.now().toString(),
@@ -81,62 +171,124 @@ const ChatbotScreen = () => {
     setIsTyping(true);
     scrollToBottom();
 
-    const result = await ChatbotService.sendMessage(inputText);
-    
-    const botMessage = {
-      id: (Date.now() + 1).toString(),
-      text: result.reply,
-      isUser: false,
-      timestamp: new Date(),
-    };
-    setMessages(prev => [...prev, botMessage]);
-    setIsTyping(false);
-    scrollToBottom();
+    try {
+      const result = await ChatbotService.sendMessage(inputText);
+      
+      const botMessage = {
+        id: (Date.now() + 1).toString(),
+        text: result.reply,
+        isUser: false,
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, botMessage]);
+    } catch (error) {
+      const errorMessage = {
+        id: (Date.now() + 1).toString(),
+        text: "Sorry, I'm having trouble responding right now. Please try again.",
+        isUser: false,
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsTyping(false);
+      scrollToBottom();
+    }
   };
 
-  const renderMessage = ({ item }) => (
-    <View
-      style={[
-        styles.messageBubble,
-        item.isUser ? styles.userBubble : styles.botBubble,
-      ]}
-    >
-      <Text style={item.isUser ? styles.userText : styles.botText}>
-        {item.text}
-      </Text>
-      <Text style={styles.timestamp}>
-        {item.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-      </Text>
-    </View>
-  );
+  // Message component (separate component to use hook)
+  const MessageItem = ({ item, index }) => {
+    const messageAnim = useMessageAnimation(index);
+    const translateY = messageAnim.interpolate({ inputRange: [0, 1], outputRange: [28, 0] });
 
-  const renderTypingIndicator = () => (
-    <View style={styles.typingIndicator}>
-      <View style={styles.dot} />
-      <View style={[styles.dot, { marginLeft: 4 }]} />
-      <View style={[styles.dot, { marginLeft: 4 }]} />
-      <Text style={styles.typingText}>Assistant is typing...</Text>
-    </View>
-  );
+    return (
+      <Animated.View 
+        style={[
+          styles.messageWrapper,
+          item.isUser ? styles.userWrapper : styles.botWrapper,
+          { opacity: messageAnim, transform: [{ translateY }] }
+        ]}
+      >
+        {!item.isUser && (
+          <View style={styles.avatar}>
+            <Icon name="restaurant" size={20} color={theme.primary} />
+          </View>
+        )}
+        <View
+          style={[
+            styles.messageBubble,
+            item.isUser ? styles.userBubble : styles.botBubble,
+          ]}
+        >
+          <Text style={item.isUser ? styles.userText : styles.botText}>
+            {item.text}
+          </Text>
+          <Text style={styles.timestamp}>
+            {item.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </Text>
+        </View>
+      </Animated.View>
+    );
+  };
 
-  const renderSuggestion = (suggestion) => (
-    <TouchableOpacity
-      key={suggestion}
-      style={styles.suggestionChip}
-      onPress={() => setInputText(suggestion)}
-    >
-      <Text style={styles.suggestionText}>{suggestion}</Text>
-    </TouchableOpacity>
-  );
+  // Typing indicator component (separate component to use hook)
+  const TypingIndicator = () => {
+    const typingAnim = useTypingAnimation();
+    
+    const dot1Opacity = typingAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.3, 1, 0.3] });
+    const dot2Opacity = typingAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.3, 1, 0.3] });
+    const dot3Opacity = typingAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.3, 1, 0.3] });
+
+    return (
+      <View style={styles.typingWrapper}>
+        <View style={styles.avatar}>
+          <Icon name="restaurant" size={20} color={theme.primary} />
+        </View>
+        <View style={styles.typingIndicator}>
+          <Animated.View style={[styles.dot, { backgroundColor: theme.primary, opacity: dot1Opacity }]} />
+          <Animated.View style={[styles.dot, { marginLeft: 4, backgroundColor: theme.primaryLight, opacity: dot2Opacity }]} />
+          <Animated.View style={[styles.dot, { marginLeft: 4, backgroundColor: theme.primaryFaint, opacity: dot3Opacity }]} />
+          <Text style={styles.typingText}>Assistant is typing...</Text>
+        </View>
+      </View>
+    );
+  };
+
+  // Suggestion component
+  const SuggestionItem = ({ suggestion, index }) => {
+    const translateY = suggestionsAnim.interpolate({ 
+      inputRange: [0, 1], 
+      outputRange: [16, 0] 
+    });
+
+    return (
+      <Animated.View 
+        style={{ opacity: suggestionsAnim, transform: [{ translateY }] }}
+      >
+        <PressableScale onPress={() => setInputText(suggestion.text)}>
+          <View style={[styles.suggestionChip, { backgroundColor: suggestion.bg }]}>
+            <Icon name={suggestion.icon} size={14} color={suggestion.color} style={styles.suggestionIcon} />
+            <Text style={[styles.suggestionText, { color: suggestion.color }]}>
+              {suggestion.text}
+            </Text>
+          </View>
+        </PressableScale>
+      </Animated.View>
+    );
+  };
+
+  const headerTranslateY = headerAnim.interpolate({ inputRange: [0, 1], outputRange: [-22, 0] });
+  const inputTranslateY = inputAnim.interpolate({ inputRange: [0, 1], outputRange: [20, 0] });
+
+  // Calculate bottom padding - no bottom tab padding when keyboard is visible
+  const bottomPadding = keyboardVisible ? 12 : tabBarHeight + 12;
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.white} />
+    <SafeAreaView style={styles.safe} edges={['top']}>
+      <StatusBar barStyle="dark-content" backgroundColor={theme.white} />
       
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Recipe Assistant</Text>
-        <Text style={styles.headerSubtitle}>Ask me anything about cooking!</Text>
-      </View>
+      {/* Soft decorative blobs (matching HomeScreen) */}
+      <View style={styles.blob1} />
+      <View style={styles.blob2} />
 
       <KeyboardAvoidingView
         style={styles.keyboardView}
@@ -145,10 +297,31 @@ const ChatbotScreen = () => {
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <View style={styles.innerContainer}>
+            {/* Header with animation - removed back button */}
+            <Animated.View 
+              style={[
+                styles.header,
+                { opacity: headerAnim, transform: [{ translateY: headerTranslateY }] }
+              ]}
+            >
+              <View style={styles.headerTop}>
+                <View style={styles.headerIcon}>
+                  <View style={styles.headerIconBadge}>
+                    <Icon name="chatbubble-ellipses" size={28} color={theme.primary} />
+                  </View>
+                </View>
+              </View>
+              <Text style={styles.headerTitle}>Recipe Assistant</Text>
+              <Text style={styles.headerSubtitle}>
+                Ask me anything about cooking! 🍳
+              </Text>
+            </Animated.View>
+
+            {/* Messages List */}
             <FlatList
               ref={flatListRef}
               data={messages}
-              renderItem={renderMessage}
+              renderItem={({ item, index }) => <MessageItem item={item} index={index} />}
               keyExtractor={item => item.id}
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.messagesList}
@@ -156,27 +329,34 @@ const ChatbotScreen = () => {
               ListHeaderComponent={
                 messages.length === 1 ? (
                   <View style={styles.suggestionsContainer}>
-                    <Text style={styles.suggestionsTitle}>Try asking:</Text>
+                    <Text style={styles.suggestionsTitle}>✨ Try asking:</Text>
                     <View style={styles.suggestionsList}>
-                      {suggestions.map(renderSuggestion)}
+                      {suggestions.map((suggestion, index) => (
+                        <SuggestionItem key={suggestion.text} suggestion={suggestion} index={index} />
+                      ))}
                     </View>
                   </View>
                 ) : null
               }
-              ListFooterComponent={isTyping ? renderTypingIndicator : null}
+              ListFooterComponent={isTyping ? <TypingIndicator /> : null}
             />
             
-            <View style={[
-              styles.inputContainer, 
-              { 
-                paddingBottom: keyboardVisible ? 10 : tabBarHeight + 10,
-                marginBottom: keyboardVisible ? 0 : 0
-              }
-            ]}>
+            {/* Input Container with dynamic bottom padding based on keyboard visibility */}
+            <Animated.View 
+              style={[
+                styles.inputContainer,
+                keyboardVisible && styles.inputContainerActive,
+                { 
+                  paddingBottom: bottomPadding,
+                  opacity: inputAnim,
+                  transform: [{ translateY: inputTranslateY }]
+                }
+              ]}
+            >
               <TextInput
                 style={styles.input}
                 placeholder="Ask me anything about cooking..."
-                placeholderTextColor={colors.gray}
+                placeholderTextColor={theme.gray}
                 value={inputText}
                 onChangeText={setInputText}
                 multiline
@@ -184,14 +364,18 @@ const ChatbotScreen = () => {
                 returnKeyType="send"
                 onSubmitEditing={handleSend}
               />
-              <TouchableOpacity
-                style={[styles.sendButton, !inputText.trim() && styles.sendButtonDisabled]}
+              <PressableScale
                 onPress={handleSend}
                 disabled={!inputText.trim() || isTyping}
               >
-                <Icon name="send" size={20} color={colors.white} />
-              </TouchableOpacity>
-            </View>
+                <View style={[
+                  styles.sendButton, 
+                  (!inputText.trim() || isTyping) && styles.sendButtonDisabled
+                ]}>
+                  <Icon name="send" size={20} color={theme.white} />
+                </View>
+              </PressableScale>
+            </Animated.View>
           </View>
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
@@ -200,26 +384,33 @@ const ChatbotScreen = () => {
 };
 
 const styles = {
-  container: {
-    flex: 1,
-    backgroundColor: colors.white,
+  safe: { 
+    flex: 1, 
+    backgroundColor: '#fafafa' 
   },
-  header: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.lightGray,
+  
+  // Background blobs (matching HomeScreen)
+  blob1: {
+    position: 'absolute', 
+    top: -70, 
+    right: -70,
+    width: 240, 
+    height: 240, 
+    borderRadius: 120,
+    backgroundColor: '#ffeded', 
+    opacity: 0.6,
   },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: colors.primary,
+  blob2: {
+    position: 'absolute', 
+    top: 200, 
+    left: -90,
+    width: 200, 
+    height: 200, 
+    borderRadius: 100,
+    backgroundColor: '#fff8f0', 
+    opacity: 0.5,
   },
-  headerSubtitle: {
-    fontSize: 14,
-    color: colors.gray,
-    marginTop: 4,
-  },
+  
   keyboardView: {
     flex: 1,
   },
@@ -227,114 +418,236 @@ const styles = {
     flex: 1,
     justifyContent: 'space-between',
   },
+  
+  // Header styles (matching HomeScreen hero section)
+  header: {
+    paddingHorizontal: 22,
+    paddingTop: 12,
+    paddingBottom: 20,
+    backgroundColor: 'transparent',
+  },
+  headerTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  headerIcon: {
+    alignItems: 'center',
+  },
+  headerIconBadge: {
+    width: 68,
+    height: 68,
+    borderRadius: 22,
+    backgroundColor: theme.primaryFaint,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: theme.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    elevation: 5,
+  },
+  headerTitle: {
+    fontSize: 36,
+    fontWeight: '800',
+    color: theme.primary,
+    letterSpacing: -1,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: theme.gray,
+    lineHeight: 21,
+    textAlign: 'center',
+  },
+  
   messagesList: {
     padding: 16,
     paddingBottom: 20,
   },
+  
+  // Message styles (matching HomeScreen card style)
+  messageWrapper: {
+    flexDirection: 'row',
+    marginBottom: 16,
+    alignItems: 'flex-end',
+  },
+  userWrapper: {
+    justifyContent: 'flex-end',
+  },
+  botWrapper: {
+    justifyContent: 'flex-start',
+  },
+  avatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: theme.primaryFaint,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
   messageBubble: {
-    maxWidth: '85%',
+    maxWidth: '75%',
     padding: 14,
     borderRadius: 20,
-    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 3,
   },
   userBubble: {
-    backgroundColor: colors.primary,
-    alignSelf: 'flex-end',
+    backgroundColor: theme.primary,
     borderBottomRightRadius: 4,
   },
   botBubble: {
-    backgroundColor: colors.lightGray,
-    alignSelf: 'flex-start',
+    backgroundColor: theme.white,
     borderBottomLeftRadius: 4,
   },
   userText: {
-    color: colors.white,
-    fontSize: 16,
+    color: theme.white,
+    fontSize: 15,
+    lineHeight: 20,
   },
   botText: {
-    color: colors.black,
-    fontSize: 16,
+    color: theme.dark,
+    fontSize: 15,
+    lineHeight: 20,
   },
   timestamp: {
     fontSize: 10,
-    color: colors.gray,
+    color: theme.gray,
     marginTop: 6,
     alignSelf: 'flex-end',
   },
+  
+  // Input styles (matching HomeScreen input pattern)
   inputContainer: {
     flexDirection: 'row',
     padding: 16,
     borderTopWidth: 1,
-    borderTopColor: colors.lightGray,
-    backgroundColor: colors.white,
-    alignItems: 'center',
+    borderTopColor: theme.lightGray,
+    backgroundColor: theme.white,
+    alignItems: 'flex-end',
+    transition: 'padding-bottom 0.2s ease',
+  },
+  inputContainerActive: {
+    borderTopColor: theme.primaryFaint,
+    shadowColor: theme.primary,
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
   },
   input: {
     flex: 1,
     borderWidth: 1,
-    borderColor: colors.lightGray,
+    borderColor: theme.lightGray,
     borderRadius: 25,
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    marginRight: 10,
-    fontSize: 16,
+    paddingVertical: 12,
+    marginRight: 12,
+    fontSize: 15,
     maxHeight: 100,
-    backgroundColor: colors.white,
+    backgroundColor: theme.white,
+    color: theme.dark,
   },
   sendButton: {
-    backgroundColor: colors.primary,
+    backgroundColor: theme.primary,
     width: 44,
     height: 44,
     borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: theme.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   sendButtonDisabled: {
-    backgroundColor: colors.gray,
+    backgroundColor: theme.gray,
+    shadowOpacity: 0,
+  },
+  
+  // Typing indicator
+  typingWrapper: {
+    flexDirection: 'row',
+    marginTop: 8,
+    marginBottom: 16,
+    alignItems: 'center',
   },
   typingIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
+    backgroundColor: theme.white,
+    paddingVertical: 12,
     paddingHorizontal: 16,
+    borderRadius: 20,
+    borderBottomLeftRadius: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 3,
   },
   dot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: colors.gray,
   },
   typingText: {
     marginLeft: 12,
     fontSize: 12,
-    color: colors.gray,
+    color: theme.gray,
   },
+  
+  // Suggestions styles (matching HomeScreen quick actions)
   suggestionsContainer: {
-    marginBottom: 20,
+    marginBottom: 24,
+    paddingTop: 8,
   },
   suggestionsTitle: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: colors.gray,
-    marginBottom: 12,
+    fontSize: 12,
+    fontWeight: '700',
+    color: theme.gray,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    marginBottom: 14,
   },
   suggestionsList: {
     flexDirection: 'row',
     flexWrap: 'wrap',
   },
   suggestionChip: {
-    backgroundColor: colors.lightGray,
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderRadius: 20,
     marginRight: 10,
     marginBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  suggestionIcon: {
+    marginRight: 6,
   },
   suggestionText: {
-    color: colors.primary,
     fontSize: 13,
     fontWeight: '500',
   },
 };
 
-export default ChatbotScreen;
+export default ChatbotScreen; 

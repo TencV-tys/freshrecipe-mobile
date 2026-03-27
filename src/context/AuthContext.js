@@ -15,43 +15,47 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     checkAuth();
-  }, []);
+  }, []); 
 
-  const checkAuth = async () => {
-    try {
-      const token = await SecureStorage.getToken();
-      if (token) {
-        api.defaults.headers.Authorization = `Bearer ${token}`;
-        
+const checkAuth = async () => {
+  try {
+    const token = await SecureStorage.getToken();
+    if (token) {
+      api.defaults.headers.Authorization = `Bearer ${token}`;
+      
+      try {
         const statusResult = await UserService.getUserStatus();
         if (statusResult.success) {
           const { status, message } = statusResult.status;
           if (status === 'banned' || status === 'suspended') {
             console.log('User is', status, ':', message);
             await logout(true);
+            Alert.alert('Account Status', message);
             return;
           }
         }
         
-        // ✅ Get user profile with saved recipes
         const response = await api.get('/users/profile');
         if (response.data && response.data.role !== 'admin') {
           console.log('✅ User profile loaded:', response.data);
-          console.log('📚 Saved recipes from profile:', response.data.savedRecipes);
-          setUser(response.data); // This now includes savedRecipes!
+          setUser(response.data);
         } else {
-          await SecureStorage.removeToken();
-          delete api.defaults.headers.Authorization;
+          await logout(true);
+        }
+      } catch (error) {
+        console.error('Auth check failed:', error);
+        if (error.response?.status === 401) {
+          console.log('⏰ Token expired, clearing...');
+          await logout(true);
         }
       }
-    } catch (error) {
-      console.error('Auth check failed:', error);
-      await SecureStorage.removeToken();
-      delete api.defaults.headers.Authorization;
-    } finally {
-      setLoading(false);
     }
-  };
+  } catch (error) {
+    console.error('Auth check failed:', error);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const login = async (email, password) => {
     try {
@@ -102,16 +106,17 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = async (silent = false) => {
-    try {
-      await UserService.logout();
-    } catch (error) {
-      console.error('Backend logout error:', error);
-    } finally {
-      await SecureStorage.removeToken();
-      delete api.defaults.headers.Authorization;
-      setUser(null);
-    }
-  };
+  try {
+    await UserService.logout();
+  } catch (error) {
+    console.error('Backend logout error:', error);
+  } finally {
+    // Clear all auth data regardless of API success
+    await SecureStorage.removeToken();
+    delete api.defaults.headers.Authorization;
+    setUser(null); // This triggers the Navigation component to switch to AuthNavigator
+  }
+};
 
   // Check user status periodically
   useEffect(() => {
@@ -156,4 +161,4 @@ export const AuthProvider = ({ children }) => {
       {children}
     </AuthContext.Provider>
   );
-};
+};  

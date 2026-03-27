@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,8 @@ import {
   Share,
   Alert,
   StatusBar,
+  Animated,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -19,15 +21,146 @@ import colors from '../../shared/constants/colors';
 import { formatTime } from '../../shared/utils/formatters';
 import { BASE_IP } from '../../../api/apiConfig';
 
+const { width, height } = Dimensions.get('window');
+
+const theme = {
+  primary: '#ff6b6b',
+  primaryDark: '#e85555',
+  primaryFaint: '#fff0f0',
+  primaryLight: '#ff8e8e',
+  secondary: '#ff9f43',
+  secondaryFaint: '#fff8f0',
+  teal: '#00c9a7',
+  tealFaint: '#f0fdf9',
+  blue: '#33b5e5',
+  blueFaint: '#f0f8ff',
+  dark: '#1a1a2e',
+  gray: '#8a8a9a',
+  lightGray: '#f4f4f8',
+  white: '#ffffff',
+  black: '#1a1a2e',
+  error: '#ff4444',
+};
+
+// Pressable with scale feedback (same as all screens)
+const PressableScale = ({ onPress, style, children, activeOpacity = 0.82 }) => {
+  const scale = useRef(new Animated.Value(1)).current;
+  const onPressIn = () => Animated.spring(scale, { toValue: 0.95, useNativeDriver: true, tension: 200, friction: 10 }).start();
+  const onPressOut = () => Animated.spring(scale, { toValue: 1, useNativeDriver: true, tension: 200, friction: 10 }).start();
+  return (
+    <Animated.View style={[{ transform: [{ scale }] }, style]}>
+      <TouchableOpacity onPress={onPress} onPressIn={onPressIn} onPressOut={onPressOut} activeOpacity={activeOpacity}>
+        {children}
+      </TouchableOpacity>
+    </Animated.View>
+  );
+};
+
+// Info Item Component with animation
+const InfoItem = ({ icon, text, animationDelay = 0 }) => {
+  const [animValue] = useState(new Animated.Value(0));
+  
+  useEffect(() => {
+    Animated.spring(animValue, {
+      toValue: 1,
+      tension: 55,
+      friction: 9,
+      delay: animationDelay,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+  
+  const translateY = animValue.interpolate({ 
+    inputRange: [0, 1], 
+    outputRange: [10, 0]
+  });
+  
+  return (
+    <Animated.View style={[styles.detailInfoItem, { opacity: animValue, transform: [{ translateY }] }]}>
+      <Icon name={icon} size={20} color={theme.gray} />
+      <Text style={styles.detailInfoText}>{text}</Text>
+    </Animated.View>
+  );
+};
+
+// Ingredient Row Component with animation
+const IngredientRow = ({ ingredient, index }) => {
+  const [animValue] = useState(new Animated.Value(0));
+  
+  useEffect(() => {
+    Animated.spring(animValue, {
+      toValue: 1,
+      tension: 55,
+      friction: 9,
+      delay: index * 30,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+  
+  const translateX = animValue.interpolate({ 
+    inputRange: [0, 1], 
+    outputRange: [15, 0]
+  });
+  
+  return (
+    <Animated.View style={[styles.ingredientRow, { opacity: animValue, transform: [{ translateX }] }]}>
+      <Icon name="ellipse" size={8} color={theme.primary} />
+      <Text style={styles.ingredientText}>
+        {ingredient.quantity} {ingredient.unit} {ingredient.name}
+      </Text>
+    </Animated.View>
+  );
+};
+
+// Instruction Step Component with animation
+const InstructionStep = ({ instruction, index }) => {
+  const [animValue] = useState(new Animated.Value(0));
+  
+  useEffect(() => {
+    Animated.spring(animValue, {
+      toValue: 1,
+      tension: 55,
+      friction: 9,
+      delay: index * 40,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+  
+  const translateX = animValue.interpolate({ 
+    inputRange: [0, 1], 
+    outputRange: [20, 0]
+  });
+  
+  return (
+    <Animated.View style={[styles.instructionRow, { opacity: animValue, transform: [{ translateX }] }]}>
+      <View style={styles.stepNumber}>
+        <Text style={styles.stepNumberText}>{instruction.step || index + 1}</Text>
+      </View>
+      <Text style={styles.instructionText}>{instruction.text || instruction.description}</Text>
+    </Animated.View>
+  );
+};
+
 const RecipeDetailScreen = ({ route, navigation }) => {
   const { recipeId } = route.params;
   const { user } = useAuth();
   const [recipe, setRecipe] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isSaved, setIsSaved] = useState(false);
+  
+  // Animation values
+  const headerAnim = useRef(new Animated.Value(0)).current;
+  const imageAnim = useRef(new Animated.Value(0)).current;
+  const contentAnim = useRef(new Animated.Value(0)).current;
+  const scrollY = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     fetchRecipe();
+    
+    // Entrance animations
+    Animated.spring(headerAnim, { toValue: 1, tension: 50, friction: 9, useNativeDriver: true }).start();
+    Animated.spring(imageAnim, { toValue: 1, tension: 55, friction: 9, delay: 100, useNativeDriver: true }).start();
+    Animated.spring(contentAnim, { toValue: 1, tension: 55, friction: 9, delay: 200, useNativeDriver: true }).start();
   }, [recipeId]);
 
   const fetchRecipe = async () => {
@@ -68,12 +201,30 @@ const RecipeDetailScreen = ({ route, navigation }) => {
     return `${BASE_IP}${recipe.image}`;
   };
 
+  const headerTranslateY = headerAnim.interpolate({ inputRange: [0, 1], outputRange: [-30, 0] });
+  const imageScale = imageAnim.interpolate({ inputRange: [0, 1], outputRange: [0.95, 1] });
+  const contentTranslateY = contentAnim.interpolate({ inputRange: [0, 1], outputRange: [30, 0] });
+  
+  // Parallax effect for header
+  const headerOpacity = scrollY.interpolate({
+    inputRange: [0, 150],
+    outputRange: [0, 1],
+    extrapolate: 'clamp',
+  });
+  
+  const headerBackground = scrollY.interpolate({
+    inputRange: [0, 100],
+    outputRange: ['rgba(255,255,255,0)', 'rgba(255,255,255,1)'],
+    extrapolate: 'clamp',
+  });
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
-        <StatusBar barStyle="dark-content" backgroundColor={colors.white} />
+        <StatusBar barStyle="dark-content" backgroundColor={theme.white} />
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
+          <ActivityIndicator size="large" color={theme.primary} />
+          <Text style={styles.loadingText}>Loading recipe...</Text>
         </View>
       </SafeAreaView>
     );
@@ -82,15 +233,15 @@ const RecipeDetailScreen = ({ route, navigation }) => {
   if (!recipe) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
-        <StatusBar barStyle="dark-content" backgroundColor={colors.white} />
+        <StatusBar barStyle="dark-content" backgroundColor={theme.white} />
         <View style={styles.centerContainer}>
+          <Icon name="alert-circle-outline" size={64} color={theme.gray} />
           <Text style={styles.errorText}>Recipe not found</Text>
-          <TouchableOpacity 
-            style={styles.backButtonContainer} 
-            onPress={() => navigation.goBack()}
-          >
-            <Text style={styles.backButtonText}>Go Back</Text>
-          </TouchableOpacity>
+          <PressableScale onPress={() => navigation.goBack()}>
+            <View style={styles.backButtonContainer}>
+              <Text style={styles.backButtonText}>Go Back</Text>
+            </View>
+          </PressableScale>
         </View>
       </SafeAreaView>
     );
@@ -99,98 +250,131 @@ const RecipeDetailScreen = ({ route, navigation }) => {
   const totalTime = (recipe.prepTime || 0) + (recipe.cookTime || 0);
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.white} />
+    <View style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor={theme.white} />
       
-      {/* Custom Header with Back Button */}
-      <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton} 
-          onPress={() => navigation.goBack()}
-        >
-          <Icon name="arrow-back" size={24} color={colors.black} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle} numberOfLines={1}>
-          {recipe.title}
-        </Text>
-        <View style={styles.headerRight} />
-      </View>
+      {/* Animated Header with Parallax */}
+      <Animated.View style={[styles.animatedHeader, { backgroundColor: headerBackground }]}>
+        <View style={styles.header}>
+          <PressableScale onPress={() => navigation.goBack()}>
+            <View style={styles.backButton}>
+              <Icon name="arrow-back" size={24} color={theme.dark} />
+            </View>
+          </PressableScale>
+          <Animated.Text 
+            style={[styles.headerTitle, { opacity: headerOpacity }]} 
+            numberOfLines={1}
+          >
+            {recipe.title}
+          </Animated.Text>
+          <View style={styles.headerRight} />
+        </View>
+      </Animated.View>
 
-      <ScrollView 
+      <Animated.ScrollView 
         style={styles.detailContainer}
         showsVerticalScrollIndicator={false}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: false }
+        )}
+        scrollEventThrottle={16}
       >
-        <View style={styles.imageContainer}>
+        {/* Image Section */}
+        <Animated.View 
+          style={[
+            styles.imageContainer,
+            { transform: [{ scale: imageScale }] }
+          ]}
+        >
           {getImageUrl() ? (
             <Image source={{ uri: getImageUrl() }} style={styles.detailImage} />
           ) : (
             <View style={[styles.detailImage, styles.imagePlaceholder]}>
-              <Icon name="restaurant-outline" size={64} color={colors.gray} />
+              <Icon name="restaurant-outline" size={64} color={theme.gray} />
             </View>
           )}
           
-          <View style={styles.actionButtons}>
-            <TouchableOpacity style={styles.actionButton} onPress={handleSave}>
-              <Icon name={isSaved ? 'bookmark' : 'bookmark-outline'} size={24} color={colors.white} />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
-              <Icon name="share-outline" size={24} color={colors.white} />
-            </TouchableOpacity>
-          </View>
-        </View>
+          <Animated.View style={[styles.actionButtons, { opacity: imageAnim }]}>
+            <PressableScale onPress={handleSave}>
+              <View style={styles.actionButton}>
+                <Icon name={isSaved ? 'bookmark' : 'bookmark-outline'} size={24} color={theme.white} />
+              </View>
+            </PressableScale>
+            <PressableScale onPress={handleShare}>
+              <View style={styles.actionButton}>
+                <Icon name="share-outline" size={24} color={theme.white} />
+              </View>
+            </PressableScale>
+          </Animated.View>
+        </Animated.View>
 
-        <View style={styles.detailContent}>
+        {/* Content Section */}
+        <Animated.View 
+          style={[
+            styles.detailContent,
+            { opacity: contentAnim, transform: [{ translateY: contentTranslateY }] }
+          ]}
+        >
           <Text style={styles.detailTitle}>{recipe.title}</Text>
           
           <View style={styles.detailInfoRow}>
-            <View style={styles.detailInfoItem}>
-              <Icon name="time-outline" size={20} color={colors.gray} />
-              <Text style={styles.detailInfoText}>{formatTime(totalTime)}</Text>
-            </View>
-            <View style={styles.detailInfoItem}>
-              <Icon name="restaurant-outline" size={20} color={colors.gray} />
-              <Text style={styles.detailInfoText}>{recipe.mealType}</Text>
-            </View>
-            <View style={styles.detailInfoItem}>
-              <Icon name="flame-outline" size={20} color={colors.gray} />
-              <Text style={styles.detailInfoText}>{recipe.difficulty}</Text>
-            </View>
-            <View style={styles.detailInfoItem}>
-              <Icon name="people-outline" size={20} color={colors.gray} />
-              <Text style={styles.detailInfoText}>{recipe.servings} servings</Text>
-            </View>
+            <InfoItem icon="time-outline" text={formatTime(totalTime)} animationDelay={0} />
+            <InfoItem icon="restaurant-outline" text={recipe.mealType} animationDelay={50} />
+            <InfoItem icon="flame-outline" text={recipe.difficulty} animationDelay={100} />
+            <InfoItem icon="people-outline" text={`${recipe.servings} servings`} animationDelay={150} />
           </View>
 
           {recipe.description && (
-            <Text style={styles.description}>{recipe.description}</Text>
+            <Animated.View 
+              style={[
+                styles.descriptionContainer,
+                {
+                  opacity: contentAnim,
+                  transform: [{ translateY: contentTranslateY }]
+                }
+              ]}
+            >
+              <Text style={styles.description}>{recipe.description}</Text>
+            </Animated.View>
           )}
 
-          <View style={styles.section}>
+          {/* Ingredients Section */}
+          <Animated.View 
+            style={[
+              styles.section,
+              {
+                opacity: contentAnim,
+                transform: [{ translateY: contentTranslateY }]
+              }
+            ]}
+          >
             <Text style={styles.sectionTitle}>Ingredients</Text>
             {recipe.ingredients?.map((ing, index) => (
-              <View key={index} style={styles.ingredientRow}>
-                <Icon name="ellipse" size={8} color={colors.primary} />
-                <Text style={styles.ingredientText}>
-                  {ing.quantity} {ing.unit} {ing.name}
-                </Text>
-              </View>
+              <IngredientRow key={index} ingredient={ing} index={index} />
             ))}
-          </View>
+          </Animated.View>
 
-          <View style={styles.section}>
+          {/* Instructions Section */}
+          <Animated.View 
+            style={[
+              styles.section,
+              {
+                opacity: contentAnim,
+                transform: [{ translateY: contentTranslateY }]
+              }
+            ]}
+          >
             <Text style={styles.sectionTitle}>Instructions</Text>
             {recipe.instructions?.map((inst, index) => (
-              <View key={index} style={styles.instructionRow}>
-                <View style={styles.stepNumber}>
-                  <Text style={styles.stepNumberText}>{inst.step || index + 1}</Text>
-                </View>
-                <Text style={styles.instructionText}>{inst.text || inst.description}</Text>
-              </View>
+              <InstructionStep key={index} instruction={inst} index={index} />
             ))}
-          </View>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+          </Animated.View>
+        </Animated.View>
+        
+        <View style={styles.bottomPadding} />
+      </Animated.ScrollView>
+    </View>
   );
 };
 

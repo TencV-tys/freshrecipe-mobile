@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,19 +10,96 @@ import {
   Alert,
   ActivityIndicator,
   StatusBar,
+  Animated,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useAuth } from '../../../context/AuthContext';
 import api from '../../../api/api';
+import { BASE_IP } from '../../../api/apiConfig';
 
-const colors = {
+const { width } = Dimensions.get('window');
+
+const theme = {
   primary: '#ff6b6b',
+  primaryDark: '#e85555',
+  primaryFaint: '#fff0f0',
+  primaryLight: '#ff8e8e',
+  secondary: '#ff9f43',
+  secondaryFaint: '#fff8f0',
+  teal: '#00c9a7',
+  tealFaint: '#f0fdf9',
+  blue: '#33b5e5',
+  blueFaint: '#f0f8ff',
+  dark: '#1a1a2e',
+  gray: '#8a8a9a',
+  lightGray: '#f4f4f8',
   white: '#ffffff',
-  gray: '#666666',
-  lightGray: '#f5f5f5',
-  black: '#000000',
+  black: '#1a1a2e',
+  error: '#ff4444',
+};
+
+// Pressable with scale feedback (same as all screens)
+const PressableScale = ({ onPress, style, children, activeOpacity = 0.82 }) => {
+  const scale = useRef(new Animated.Value(1)).current;
+  const onPressIn = () => Animated.spring(scale, { toValue: 0.95, useNativeDriver: true, tension: 200, friction: 10 }).start();
+  const onPressOut = () => Animated.spring(scale, { toValue: 1, useNativeDriver: true, tension: 200, friction: 10 }).start();
+  return (
+    <Animated.View style={[{ transform: [{ scale }] }, style]}>
+      <TouchableOpacity onPress={onPress} onPressIn={onPressIn} onPressOut={onPressOut} activeOpacity={activeOpacity}>
+        {children}
+      </TouchableOpacity>
+    </Animated.View>
+  );
+};
+
+// Animated Input Component
+const AnimatedInput = ({ label, value, onChangeText, placeholder, keyboardType, autoCapitalize, delay = 0 }) => {
+  const [animValue] = useState(new Animated.Value(0));
+  const [isFocused, setIsFocused] = useState(false);
+  
+  useEffect(() => {
+    Animated.spring(animValue, {
+      toValue: 1,
+      tension: 55,
+      friction: 9,
+      delay,
+      useNativeDriver: true,
+    }).start();
+  }, [delay]);
+  
+  const translateY = animValue.interpolate({ 
+    inputRange: [0, 1], 
+    outputRange: [15, 0]
+  });
+  
+  const borderColor = isFocused ? theme.primary : theme.lightGray;
+  
+  return (
+    <Animated.View 
+      style={[
+        styles.formGroup,
+        { opacity: animValue, transform: [{ translateY }] }
+      ]}
+    >
+      <Text style={styles.label}>{label}</Text>
+      <View style={[styles.inputContainer, { borderColor }]}>
+        <TextInput
+          style={styles.input}
+          value={value}
+          onChangeText={onChangeText}
+          placeholder={placeholder}
+          placeholderTextColor={theme.gray}
+          keyboardType={keyboardType}
+          autoCapitalize={autoCapitalize}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+        />
+      </View>
+    </Animated.View>
+  );
 };
 
 const EditProfileScreen = ({ navigation }) => {
@@ -36,6 +113,12 @@ const EditProfileScreen = ({ navigation }) => {
   });
   const [avatar, setAvatar] = useState(user?.avatar || null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  
+  // Animation values
+  const headerAnim = useRef(new Animated.Value(0)).current;
+  const avatarAnim = useRef(new Animated.Value(0)).current;
+  const contentAnim = useRef(new Animated.Value(0)).current;
+  const buttonAnim = useRef(new Animated.Value(0)).current;
 
   // Update form when user changes
   useEffect(() => {
@@ -49,6 +132,20 @@ const EditProfileScreen = ({ navigation }) => {
       setAvatar(user.avatar || null);
     }
   }, [user]);
+
+  useEffect(() => {
+    // Entrance animations
+    Animated.spring(headerAnim, { toValue: 1, tension: 50, friction: 9, useNativeDriver: true }).start();
+    Animated.spring(avatarAnim, { toValue: 1, tension: 55, friction: 9, delay: 100, useNativeDriver: true }).start();
+    Animated.spring(contentAnim, { toValue: 1, tension: 55, friction: 9, delay: 150, useNativeDriver: true }).start();
+    Animated.spring(buttonAnim, { toValue: 1, tension: 55, friction: 9, delay: 200, useNativeDriver: true }).start();
+  }, []);
+
+  const getImageUrl = () => {
+    if (!avatar) return null;
+    if (avatar.startsWith('http')) return avatar;
+    return `${BASE_IP}${avatar}`;
+  };
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -99,7 +196,6 @@ const EditProfileScreen = ({ navigation }) => {
     setLoading(true);
     
     try {
-      // Update profile
       const response = await api.put('/users/profile', {
         username: formData.username,
         email: formData.email,
@@ -107,7 +203,6 @@ const EditProfileScreen = ({ navigation }) => {
         lastName: formData.lastName,
       });
       
-      // Update user in context
       if (setUser && response.data) {
         setUser(response.data);
       }
@@ -123,97 +218,133 @@ const EditProfileScreen = ({ navigation }) => {
     }
   };
 
+  const headerTranslateY = headerAnim.interpolate({ inputRange: [0, 1], outputRange: [-30, 0] });
+  const avatarScale = avatarAnim.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1] });
+  const contentTranslateY = contentAnim.interpolate({ inputRange: [0, 1], outputRange: [20, 0] });
+  const buttonTranslateY = buttonAnim.interpolate({ inputRange: [0, 1], outputRange: [20, 0] });
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.white} />
+      <StatusBar barStyle="dark-content" backgroundColor={theme.white} />
+      
+      {/* Soft decorative blobs */}
+      <View style={styles.blob1} />
+      <View style={styles.blob2} />
       
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Icon name="arrow-back" size={24} color={colors.black} />
-        </TouchableOpacity>
+      <Animated.View 
+        style={[
+          styles.header,
+          { opacity: headerAnim, transform: [{ translateY: headerTranslateY }] }
+        ]}
+      >
+        <PressableScale onPress={() => navigation.goBack()}>
+          <View style={styles.backButton}>
+            <Icon name="arrow-back" size={24} color={theme.dark} />
+          </View>
+        </PressableScale>
         <Text style={styles.headerTitle}>Edit Profile</Text>
         <View style={styles.placeholder} />
-      </View>
+      </Animated.View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.content} 
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.contentContainer}
+      >
         {/* Avatar Section */}
-        <View style={styles.avatarContainer}>
-          <TouchableOpacity onPress={pickImage} disabled={uploadingAvatar}>
-            {uploadingAvatar ? (
-              <View style={styles.avatarPlaceholder}>
-                <ActivityIndicator size="large" color={colors.white} />
+        <Animated.View 
+          style={[
+            styles.avatarContainer,
+            { opacity: avatarAnim, transform: [{ scale: avatarScale }] }
+          ]}
+        >
+          <PressableScale onPress={pickImage} disabled={uploadingAvatar}>
+            <View style={styles.avatarWrapper}>
+              {uploadingAvatar ? (
+                <View style={styles.avatarPlaceholder}>
+                  <ActivityIndicator size="large" color={theme.white} />
+                </View>
+              ) : getImageUrl() ? (
+                <Image 
+                  source={{ uri: getImageUrl() }} 
+                  style={styles.avatar} 
+                />
+              ) : (
+                <View style={styles.avatarPlaceholder}>
+                  <Icon name="camera" size={32} color={theme.white} />
+                </View>
+              )}
+              <View style={styles.editAvatarIcon}>
+                <Icon name="pencil" size={14} color={theme.white} />
               </View>
-            ) : avatar ? (
-              <Image 
-                source={{ uri: avatar.startsWith('http') ? avatar : `http://10.205.101.2:5000${avatar}` }} 
-                style={styles.avatar} 
-              />
-            ) : (
-              <View style={styles.avatarPlaceholder}>
-                <Icon name="camera" size={32} color={colors.white} />
-              </View>
-            )}
-            <View style={styles.editAvatarIcon}>
-              <Icon name="pencil" size={16} color={colors.white} />
             </View>
-          </TouchableOpacity>
+          </PressableScale>
           <Text style={styles.avatarHint}>Tap to change photo</Text>
-        </View>
+        </Animated.View>
 
         {/* Form Fields */}
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Username</Text>
-          <TextInput
-            style={styles.input}
+        <Animated.View style={{ opacity: contentAnim }}>
+          <AnimatedInput
+            label="Username"
             value={formData.username}
             onChangeText={(text) => setFormData({ ...formData, username: text })}
             placeholder="Username"
-            placeholderTextColor={colors.gray}
+            delay={0}
           />
-        </View>
 
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Email</Text>
-          <TextInput
-            style={styles.input}
+          <AnimatedInput
+            label="Email"
             value={formData.email}
             onChangeText={(text) => setFormData({ ...formData, email: text })}
             placeholder="Email"
             keyboardType="email-address"
             autoCapitalize="none"
-            placeholderTextColor={colors.gray}
+            delay={50}
           />
-        </View>
 
-        <View style={styles.row}>
-          <View style={[styles.formGroup, styles.halfWidth]}>
-            <Text style={styles.label}>First Name</Text>
-            <TextInput
-              style={styles.input}
-              value={formData.firstName}
-              onChangeText={(text) => setFormData({ ...formData, firstName: text })}
-              placeholder="First Name"
-              placeholderTextColor={colors.gray}
-            />
+          <View style={styles.row}>
+            <View style={styles.halfWidth}>
+              <AnimatedInput
+                label="First Name"
+                value={formData.firstName}
+                onChangeText={(text) => setFormData({ ...formData, firstName: text })}
+                placeholder="First Name"
+                delay={100}
+              />
+            </View>
+            <View style={styles.halfWidth}>
+              <AnimatedInput
+                label="Last Name"
+                value={formData.lastName}
+                onChangeText={(text) => setFormData({ ...formData, lastName: text })}
+                placeholder="Last Name"
+                delay={150}
+              />
+            </View>
           </View>
-
-          <View style={[styles.formGroup, styles.halfWidth]}>
-            <Text style={styles.label}>Last Name</Text>
-            <TextInput
-              style={styles.input}
-              value={formData.lastName}
-              onChangeText={(text) => setFormData({ ...formData, lastName: text })}
-              placeholder="Last Name"
-              placeholderTextColor={colors.gray}
-            />
-          </View>
-        </View>
+        </Animated.View>
 
         {/* Save Button */}
-        <TouchableOpacity style={styles.saveButton} onPress={handleSave} disabled={loading}>
-          {loading ? <ActivityIndicator color={colors.white} /> : <Text style={styles.saveButtonText}>Save Changes</Text>}
-        </TouchableOpacity>
+        <Animated.View 
+          style={[
+            styles.buttonWrapper,
+            { opacity: buttonAnim, transform: [{ translateY: buttonTranslateY }] }
+          ]}
+        >
+          <PressableScale onPress={handleSave} disabled={loading}>
+            <View style={[styles.saveButton, loading && styles.saveButtonDisabled]}>
+              {loading ? (
+                <ActivityIndicator color={theme.white} />
+              ) : (
+                <>
+                  <Icon name="save-outline" size={20} color={theme.white} />
+                  <Text style={styles.saveButtonText}>Save Changes</Text>
+                </>
+              )}
+            </View>
+          </PressableScale>
+        </Animated.View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -222,71 +353,117 @@ const EditProfileScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: '#fafafa',
+  },
+  // Background blobs (matching all screens)
+  blob1: {
+    position: 'absolute',
+    top: -70,
+    right: -70,
+    width: 240,
+    height: 240,
+    borderRadius: 120,
+    backgroundColor: '#ffeded',
+    opacity: 0.6,
+  },
+  blob2: {
+    position: 'absolute',
+    top: 200,
+    left: -90,
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: '#fff8f0',
+    opacity: 0.5,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: 'transparent',
     borderBottomWidth: 1,
-    borderBottomColor: colors.lightGray,
+    borderBottomColor: theme.lightGray,
   },
   backButton: {
-    padding: 8,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: theme.white,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 6,
+    elevation: 3,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: colors.black,
+    fontSize: 20,
+    fontWeight: '800',
+    color: theme.dark,
+    letterSpacing: -0.3,
   },
   placeholder: {
     width: 40,
   },
   content: {
     flex: 1,
+  },
+  contentContainer: {
     padding: 20,
+    paddingBottom: 40,
   },
   avatarContainer: {
     alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: 32,
+  },
+  avatarWrapper: {
+    position: 'relative',
   },
   avatar: {
     width: 120,
     height: 120,
     borderRadius: 60,
     borderWidth: 3,
-    borderColor: colors.primary,
+    borderColor: theme.primary,
+    backgroundColor: theme.white,
   },
   avatarPlaceholder: {
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: colors.primary,
+    backgroundColor: theme.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
   editAvatarIcon: {
     position: 'absolute',
-    bottom: 0,
-    right: 0,
-    backgroundColor: colors.primary,
+    bottom: 4,
+    right: 4,
+    backgroundColor: theme.primary,
     width: 32,
     height: 32,
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: colors.white,
+    borderColor: theme.white,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   avatarHint: {
     fontSize: 12,
-    color: colors.gray,
-    marginTop: 8,
+    color: theme.gray,
+    marginTop: 12,
+    fontWeight: '500',
   },
   formGroup: {
-    marginBottom: 16,
+    marginBottom: 20,
   },
   row: {
     flexDirection: 'row',
@@ -297,30 +474,47 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '600',
     marginBottom: 8,
-    color: colors.black,
+    color: theme.dark,
+  },
+  inputContainer: {
+    borderWidth: 1,
+    borderColor: theme.lightGray,
+    borderRadius: 14,
+    backgroundColor: theme.white,
+    overflow: 'hidden',
   },
   input: {
-    borderWidth: 1,
-    borderColor: colors.lightGray,
-    borderRadius: 10,
-    padding: 12,
-    fontSize: 16,
-    backgroundColor: colors.white,
+    padding: 14,
+    fontSize: 15,
+    color: theme.dark,
+  },
+  buttonWrapper: {
+    marginTop: 20,
+    marginBottom: 20,
   },
   saveButton: {
-    backgroundColor: colors.primary,
+    flexDirection: 'row',
+    backgroundColor: theme.primary,
     padding: 16,
-    borderRadius: 10,
+    borderRadius: 16,
     alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 40,
+    justifyContent: 'center',
+    gap: 8,
+    shadowColor: theme.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  saveButtonDisabled: {
+    opacity: 0.7,
   },
   saveButtonText: {
-    color: colors.white,
+    color: theme.white,
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '700',
   },
 });
 

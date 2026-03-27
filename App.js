@@ -19,7 +19,7 @@ const Navigation = () => {
       {user ? <AppNavigator /> : <AuthNavigator />}
     </NavigationContainer>
   );
-};
+}; 
 
 export default function App() {
   return (

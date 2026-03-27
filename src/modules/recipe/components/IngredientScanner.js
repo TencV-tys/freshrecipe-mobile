@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,12 +10,142 @@ import {
   Alert,
   Modal,
   FlatList,
+  Animated,
+  Dimensions,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import Icon from 'react-native-vector-icons/Ionicons';
 import RecipeService from '../../recipe/services/recipe.service';
 import colors from '../../shared/constants/colors';
 import { BASE_IP } from '../../../api/apiConfig';
+
+const { width, height } = Dimensions.get('window');
+
+const theme = {
+  primary: '#ff6b6b',
+  primaryDark: '#e85555',
+  primaryFaint: '#fff0f0',
+  primaryLight: '#ff8e8e',
+  secondary: '#ff9f43',
+  secondaryFaint: '#fff8f0',
+  teal: '#00c9a7',
+  tealFaint: '#f0fdf9',
+  blue: '#33b5e5',
+  blueFaint: '#f0f8ff',
+  dark: '#1a1a2e',
+  gray: '#8a8a9a',
+  lightGray: '#f4f4f8',
+  white: '#ffffff',
+  black: '#1a1a2e',
+  error: '#ff4444',
+};
+
+// Pressable with scale feedback (same as all screens)
+const PressableScale = ({ onPress, style, children, activeOpacity = 0.82 }) => {
+  const scale = useRef(new Animated.Value(1)).current;
+  const onPressIn = () => Animated.spring(scale, { toValue: 0.95, useNativeDriver: true, tension: 200, friction: 10 }).start();
+  const onPressOut = () => Animated.spring(scale, { toValue: 1, useNativeDriver: true, tension: 200, friction: 10 }).start();
+  return (
+    <Animated.View style={[{ transform: [{ scale }] }, style]}>
+      <TouchableOpacity onPress={onPress} onPressIn={onPressIn} onPressOut={onPressOut} activeOpacity={activeOpacity}>
+        {children}
+      </TouchableOpacity>
+    </Animated.View>
+  );
+};
+
+// Animated Chip Component
+const AnimatedChip = ({ ingredient, isSelected, onPress, index }) => {
+  const [animValue] = useState(new Animated.Value(0));
+  
+  useEffect(() => {
+    Animated.spring(animValue, {
+      toValue: 1,
+      tension: 55,
+      friction: 9,
+      delay: index * 30,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+  
+  const translateY = animValue.interpolate({ 
+    inputRange: [0, 1], 
+    outputRange: [10, 0]
+  });
+  
+  return (
+    <Animated.View style={{ opacity: animValue, transform: [{ translateY }] }}>
+      <PressableScale onPress={() => onPress(ingredient.name)}>
+        <View style={[
+          styles.ingredientChip,
+          isSelected && styles.ingredientChipSelected
+        ]}>
+          <Text style={[
+            styles.ingredientText,
+            isSelected && styles.ingredientTextSelected
+          ]}>
+            {isSelected ? '✓' : '○'} {ingredient.name} ({ingredient.confidence}%)
+          </Text>
+        </View>
+      </PressableScale>
+    </Animated.View>
+  );
+};
+
+// Animated Recipe Card Component
+const AnimatedRecipeCard = ({ recipe, index, onPress, getImageUrl }) => {
+  const [animValue] = useState(new Animated.Value(0));
+  
+  useEffect(() => {
+    Animated.spring(animValue, {
+      toValue: 1,
+      tension: 55,
+      friction: 9,
+      delay: index * 50,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+  
+  const translateX = animValue.interpolate({ 
+    inputRange: [0, 1], 
+    outputRange: [20, 0]
+  });
+  
+  return (
+    <Animated.View style={{ opacity: animValue, transform: [{ translateX }] }}>
+      <PressableScale onPress={onPress}>
+        <View style={styles.recipeCard}>
+          <View style={styles.recipeImageContainer}>
+            {recipe.image ? (
+              <Image source={{ uri: getImageUrl(recipe.image) }} style={styles.recipeImage} />
+            ) : (
+              <View style={styles.recipeImagePlaceholder}>
+                <Icon name="restaurant-outline" size={24} color={theme.gray} />
+              </View>
+            )}
+          </View>
+          <View style={styles.recipeInfo}>
+            <Text style={styles.recipeTitle} numberOfLines={1}>
+              {recipe.title}
+            </Text>
+            <View style={styles.recipeMatchBadge}>
+              <Text style={styles.recipeMatchText}>{recipe.matchPercentage}% match</Text>
+            </View>
+            <View style={styles.recipeMeta}>
+              <Icon name="time-outline" size={10} color={theme.gray} />
+              <Text style={styles.recipeMetaText}>
+                {(recipe.prepTime || 0) + (recipe.cookTime || 0)} min
+              </Text>
+              <Text style={styles.recipeMetaText}>•</Text>
+              <Icon name="restaurant-outline" size={10} color={theme.gray} />
+              <Text style={styles.recipeMetaText}>{recipe.mealType}</Text>
+            </View>
+          </View>
+        </View>
+      </PressableScale>
+    </Animated.View>
+  );
+};
 
 const IngredientScanner = ({ onClose, onScanComplete, navigation }) => {
   const [step, setStep] = useState('select');
@@ -26,6 +156,18 @@ const IngredientScanner = ({ onClose, onScanComplete, navigation }) => {
   const [matchingRecipes, setMatchingRecipes] = useState([]);
   const [generatedRecipe, setGeneratedRecipe] = useState(null);
   const [showGeneratedRecipe, setShowGeneratedRecipe] = useState(false);
+  
+  // Animation values
+  const selectAnim = useRef(new Animated.Value(0)).current;
+  const resultsAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (step === 'select') {
+      Animated.spring(selectAnim, { toValue: 1, tension: 50, friction: 9, useNativeDriver: true }).start();
+    } else if (step === 'results') {
+      Animated.spring(resultsAnim, { toValue: 1, tension: 55, friction: 9, delay: 200, useNativeDriver: true }).start();
+    }
+  }, [step]);
 
   // Helper function to get image URL
   const getImageUrl = (imagePath) => {
@@ -86,7 +228,6 @@ const IngredientScanner = ({ onClose, onScanComplete, navigation }) => {
         const ingredients = result.data.detected;
         setDetectedIngredients(ingredients);
         setSelectedIngredients(ingredients.map(i => i.name));
-        // Get matching recipes immediately
         await fetchMatchingRecipes(ingredients.map(i => i.name));
         setStep('results');
       } else {
@@ -112,7 +253,6 @@ const IngredientScanner = ({ onClose, onScanComplete, navigation }) => {
     try {
       const result = await RecipeService.findRecipesByIngredients(ingredients);
       if (result.success) {
-        // Filter out recipes with 0% match
         const filtered = (result.recipes || []).filter(r => r.matchPercentage > 0);
         setMatchingRecipes(filtered);
       }
@@ -179,49 +319,78 @@ const IngredientScanner = ({ onClose, onScanComplete, navigation }) => {
     }
   };
 
-  // Scan again - go back to camera/gallery
+  // Scan again
   const handleScanAgain = () => {
     setStep('select');
     setCapturedImage(null);
     setDetectedIngredients([]);
     setSelectedIngredients([]);
     setMatchingRecipes([]);
+    Animated.spring(selectAnim, { toValue: 1, tension: 50, friction: 9, useNativeDriver: true }).start();
   };
 
-  // Render select mode (camera or gallery)
+  const selectTranslateY = selectAnim.interpolate({ inputRange: [0, 1], outputRange: [30, 0] });
+  const resultsTranslateY = resultsAnim.interpolate({ inputRange: [0, 1], outputRange: [30, 0] });
+
+  // Render select mode
   if (step === 'select') {
     return (
       <View style={styles.container}>
-        <TouchableOpacity style={styles.backButton} onPress={onClose}>
-          <Icon name="arrow-back" size={28} color={colors.black} />
-        </TouchableOpacity>
+        {/* Soft decorative blobs */}
+        <View style={styles.blob1} />
+        <View style={styles.blob2} />
+        
+        <PressableScale onPress={onClose} style={styles.backButton}>
+          <Icon name="arrow-back" size={24} color={theme.dark} />
+        </PressableScale>
 
-        <View style={styles.header}>
-          <Icon name="camera-outline" size={64} color={colors.primary} />
+        <Animated.View 
+          style={[
+            styles.header,
+            { opacity: selectAnim, transform: [{ translateY: selectTranslateY }] }
+          ]}
+        >
+          <View style={styles.headerIcon}>
+            <Icon name="camera-outline" size={64} color={theme.primary} />
+          </View>
           <Text style={styles.title}>Scan Ingredients</Text>
           <Text style={styles.subtitle}>
             Take a photo or upload an image to detect ingredients using AI
           </Text>
-        </View>
+        </Animated.View>
 
-        <View style={styles.buttonRow}>
-          <TouchableOpacity style={styles.cameraButton} onPress={takePhoto}>
-            <Icon name="camera" size={32} color={colors.white} />
-            <Text style={styles.buttonText}>Take Photo</Text>
-          </TouchableOpacity>
+        <Animated.View 
+          style={[
+            styles.buttonRow,
+            { opacity: selectAnim, transform: [{ translateY: selectTranslateY }] }
+          ]}
+        >
+          <PressableScale onPress={takePhoto} style={{ flex: 1, marginRight: 10 }}>
+            <View style={styles.cameraButton}>
+              <Icon name="camera" size={28} color={theme.white} />
+              <Text style={styles.buttonText}>Take Photo</Text>
+            </View>
+          </PressableScale>
 
-          <TouchableOpacity style={styles.galleryButton} onPress={pickImage}>
-            <Icon name="images" size={32} color={colors.white} />
-            <Text style={styles.buttonText}>Choose from Gallery</Text>
-          </TouchableOpacity>
-        </View>
+          <PressableScale onPress={pickImage} style={{ flex: 1, marginLeft: 10 }}>
+            <View style={styles.galleryButton}>
+              <Icon name="images" size={28} color={theme.white} />
+              <Text style={styles.buttonText}>Gallery</Text>
+            </View>
+          </PressableScale>
+        </Animated.View>
 
-        <View style={styles.tipContainer}>
-          <Icon name="bulb-outline" size={20} color={colors.gray} />
+        <Animated.View 
+          style={[
+            styles.tipContainer,
+            { opacity: selectAnim, transform: [{ translateY: selectTranslateY }] }
+          ]}
+        >
+          <Icon name="bulb-outline" size={20} color={theme.secondary} />
           <Text style={styles.tipText}>
             Tip: Place ingredients on a plain background for better detection
           </Text>
-        </View>
+        </Animated.View>
       </View>
     );
   }
@@ -230,15 +399,11 @@ const IngredientScanner = ({ onClose, onScanComplete, navigation }) => {
   if (step === 'scanning') {
     return (
       <View style={styles.container}>
-        <TouchableOpacity style={styles.backButton} onPress={handleScanAgain}>
-          <Icon name="arrow-back" size={28} color={colors.black} />
-        </TouchableOpacity>
-        
         <View style={styles.scanningContainer}>
           {capturedImage && (
             <Image source={{ uri: capturedImage }} style={styles.previewImage} />
           )}
-          <ActivityIndicator size="large" color={colors.primary} />
+          <ActivityIndicator size="large" color={theme.primary} />
           <Text style={styles.scanningText}>Analyzing image...</Text>
           <Text style={styles.scanningSubtext}>Detecting ingredients with AI</Text>
         </View>
@@ -250,132 +415,109 @@ const IngredientScanner = ({ onClose, onScanComplete, navigation }) => {
   if (step === 'results') {
     return (
       <View style={styles.container}>
-        {/* Header with Back and Scan Again */}
-        <View style={styles.resultHeader}>
-          <TouchableOpacity onPress={onClose} style={styles.headerButton}>
-            <Icon name="arrow-back" size={24} color={colors.black} />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={handleScanAgain} style={styles.headerButton}>
-            <Icon name="refresh-outline" size={24} color={colors.primary} />
-            <Text style={styles.scanAgainText}>Scan Again</Text>
-          </TouchableOpacity>
-        </View>
+        {/* Header */}
+        <Animated.View style={[styles.resultHeader, { opacity: resultsAnim }]}>
+          <PressableScale onPress={onClose}>
+            <View style={styles.headerButton}>
+              <Icon name="arrow-back" size={24} color={theme.dark} />
+            </View>
+          </PressableScale>
+          <Text style={styles.resultTitle}>Scan Results</Text>
+          <PressableScale onPress={handleScanAgain}>
+            <View style={styles.headerButton}>
+              <Icon name="refresh-outline" size={24} color={theme.primary} />
+              <Text style={styles.scanAgainText}>Scan</Text>
+            </View>
+          </PressableScale>
+        </Animated.View>
 
-        <ScrollView style={styles.resultsContainer} showsVerticalScrollIndicator={false}>
+        <ScrollView 
+          style={styles.resultsContainer} 
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.resultsContent}
+        >
           {/* Captured Image Thumbnail */}
           {capturedImage && (
-            <Image source={{ uri: capturedImage }} style={styles.thumbnailImage} />
+            <Animated.View style={{ opacity: resultsAnim }}>
+              <Image source={{ uri: capturedImage }} style={styles.thumbnailImage} />
+            </Animated.View>
           )}
           
           {/* Detected Ingredients Section */}
-          <Text style={styles.sectionTitle}>📋 Detected Ingredients</Text>
-          <View style={styles.ingredientsWrapper}>
+          <Animated.View style={{ opacity: resultsAnim }}>
+            <Text style={styles.sectionTitle}>📋 Detected Ingredients</Text>
             <View style={styles.ingredientsList}>
               {detectedIngredients.map((ing, index) => (
-                <TouchableOpacity
+                <AnimatedChip
                   key={index}
-                  style={[
-                    styles.ingredientChip,
-                    selectedIngredients.includes(ing.name) && styles.ingredientChipSelected
-                  ]}
-                  onPress={() => toggleIngredient(ing.name)}
-                >
-                  <Text style={[
-                    styles.ingredientText,
-                    selectedIngredients.includes(ing.name) && styles.ingredientTextSelected
-                  ]}>
-                    {selectedIngredients.includes(ing.name) ? '✓' : '○'} {ing.name} ({ing.confidence}%)
-                  </Text>
-                </TouchableOpacity>
+                  ingredient={ing}
+                  isSelected={selectedIngredients.includes(ing.name)}
+                  onPress={toggleIngredient}
+                  index={index}
+                />
               ))}
             </View>
-          </View>
+          </Animated.View>
 
           {/* Matching Recipes Section */}
           <View style={styles.matchingSection}>
             <Text style={styles.sectionTitle}>
-              🍽️ Matching Recipes ({matchingRecipes.length} found)
+              🍽️ Matching Recipes ({matchingRecipes.length})
             </Text>
             
             {matchingRecipes.length === 0 ? (
-              <View style={styles.noMatchesContainer}>
-                <Icon name="restaurant-outline" size={48} color={colors.gray} />
+              <Animated.View style={[styles.noMatchesContainer, { opacity: resultsAnim }]}>
+                <Icon name="restaurant-outline" size={64} color={theme.gray} />
                 <Text style={styles.noMatchesText}>No matching recipes</Text>
                 <Text style={styles.noMatchesSubtext}>
                   Try selecting different ingredients or generate a new recipe!
                 </Text>
-              </View>
+              </Animated.View>
             ) : (
               matchingRecipes.map((recipe, index) => (
-                <TouchableOpacity
+                <AnimatedRecipeCard
                   key={recipe.id || recipe._id || index}
-                  style={styles.recipeCard}
+                  recipe={recipe}
+                  index={index}
                   onPress={() => {
                     onScanComplete(selectedIngredients);
                     onClose();
                     navigation?.navigate('RecipeDetail', { recipeId: recipe.id || recipe._id });
                   }}
-                >
-                  <View style={styles.recipeImageContainer}>
-                    {recipe.image ? (
-                      <Image source={{ uri: getImageUrl(recipe.image) }} style={styles.recipeImage} />
-                    ) : (
-                      <View style={styles.recipeImagePlaceholder}>
-                        <Icon name="restaurant-outline" size={24} color={colors.gray} />
-                      </View>
-                    )}
-                  </View>
-                  <View style={styles.recipeInfo}>
-                    <Text style={styles.recipeTitle} numberOfLines={1}>
-                      {recipe.title}
-                    </Text>
-                    <View style={styles.recipeMatchBadge}>
-                      <Text style={styles.recipeMatchText}>{recipe.matchPercentage}% match</Text>
-                    </View>
-                    <View style={styles.recipeMeta}>
-                      <Text style={styles.recipeMetaText}>
-                        {(recipe.prepTime || 0) + (recipe.cookTime || 0)} min
-                      </Text>
-                      <Text style={styles.recipeMetaText}>•</Text>
-                      <Text style={styles.recipeMetaText}>{recipe.mealType}</Text>
-                      <Text style={styles.recipeMetaText}>•</Text>
-                      <Text style={styles.recipeMetaText}>{recipe.difficulty}</Text>
-                    </View>
-                    <Text style={styles.recipeServings}>👥 {recipe.servings} servings</Text>
-                  </View>
-                </TouchableOpacity>
+                  getImageUrl={getImageUrl}
+                />
               ))
             )}
           </View>
         </ScrollView>
 
         {/* Generate Filipino Recipe Button */}
-        <TouchableOpacity
-          style={styles.generateButton}
-          onPress={generateFilipinoRecipe}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color={colors.white} />
-          ) : (
-            <>
-              <Icon name="sparkles" size={20} color={colors.white} />
-              <Text style={styles.generateButtonText}>Generate Filipino Recipe</Text>
-            </>
-          )}
-        </TouchableOpacity>
+        <Animated.View style={[styles.generateButtonWrapper, { opacity: resultsAnim }]}>
+          <PressableScale onPress={generateFilipinoRecipe} disabled={loading}>
+            <View style={styles.generateButton}>
+              {loading ? (
+                <ActivityIndicator color={theme.white} />
+              ) : (
+                <>
+                  <Icon name="sparkles" size={20} color={theme.white} />
+                  <Text style={styles.generateButtonText}>Generate Filipino Recipe</Text>
+                </>
+              )}
+            </View>
+          </PressableScale>
+        </Animated.View>
 
         {/* Generated Recipe Modal */}
         <Modal visible={showGeneratedRecipe} animationType="slide" presentationStyle="fullScreen">
-          <ScrollView style={styles.generatedContainer}>
+          <ScrollView style={styles.generatedContainer} showsVerticalScrollIndicator={false}>
             <View style={styles.generatedHeader}>
-              <TouchableOpacity onPress={() => setShowGeneratedRecipe(false)}>
-                <Icon name="arrow-back" size={28} color={colors.black} />
-              </TouchableOpacity>
-              <Text style={styles.generatedTitle}>✨ AI-Generated Recipe</Text>
-              <TouchableOpacity onPress={saveGeneratedRecipe}>
-                <Icon name="bookmark-outline" size={28} color={colors.primary} />
-              </TouchableOpacity>
+              <PressableScale onPress={() => setShowGeneratedRecipe(false)}>
+                <Icon name="arrow-back" size={24} color={theme.dark} />
+              </PressableScale>
+              <Text style={styles.generatedTitle}>✨ AI Recipe</Text>
+              <PressableScale onPress={saveGeneratedRecipe}>
+                <Icon name="bookmark-outline" size={24} color={theme.primary} />
+              </PressableScale>
             </View>
             
             {generatedRecipe && (
@@ -385,20 +527,18 @@ const IngredientScanner = ({ onClose, onScanComplete, navigation }) => {
                 
                 <View style={styles.genMetaRow}>
                   <View style={styles.genMetaItem}>
-                    <Icon name="time-outline" size={14} color={colors.gray} />
-                    <Text>{generatedRecipe.prepTime + generatedRecipe.cookTime} min</Text>
+                    <Icon name="time-outline" size={14} color={theme.gray} />
+                    <Text style={styles.genMetaText}>
+                      {generatedRecipe.prepTime + generatedRecipe.cookTime} min
+                    </Text>
                   </View>
                   <View style={styles.genMetaItem}>
-                    <Icon name="restaurant-outline" size={14} color={colors.gray} />
-                    <Text>{generatedRecipe.mealType}</Text>
+                    <Icon name="restaurant-outline" size={14} color={theme.gray} />
+                    <Text style={styles.genMetaText}>{generatedRecipe.mealType}</Text>
                   </View>
                   <View style={styles.genMetaItem}>
-                    <Icon name="flame-outline" size={14} color={colors.gray} />
-                    <Text>{generatedRecipe.difficulty}</Text>
-                  </View>
-                  <View style={styles.genMetaItem}>
-                    <Icon name="people-outline" size={14} color={colors.gray} />
-                    <Text>{generatedRecipe.servings} servings</Text>
+                    <Icon name="people-outline" size={14} color={theme.gray} />
+                    <Text style={styles.genMetaText}>{generatedRecipe.servings} servings</Text>
                   </View>
                 </View>
                 
@@ -423,10 +563,12 @@ const IngredientScanner = ({ onClose, onScanComplete, navigation }) => {
                   ))}
                 </View>
                 
-                <TouchableOpacity style={styles.genSaveButton} onPress={saveGeneratedRecipe}>
-                  <Icon name="bookmark" size={20} color={colors.white} />
-                  <Text style={styles.genSaveButtonText}>Save to My Recipes</Text>
-                </TouchableOpacity>
+                <PressableScale onPress={saveGeneratedRecipe}>
+                  <View style={styles.genSaveButton}>
+                    <Icon name="bookmark" size={20} color={theme.white} />
+                    <Text style={styles.genSaveButtonText}>Save to My Recipes</Text>
+                  </View>
+                </PressableScale>
               </>
             )}
           </ScrollView>
@@ -441,97 +583,134 @@ const IngredientScanner = ({ onClose, onScanComplete, navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: '#fafafa',
+  },
+  // Background blobs
+  blob1: {
+    position: 'absolute',
+    top: -70,
+    right: -70,
+    width: 240,
+    height: 240,
+    borderRadius: 120,
+    backgroundColor: '#ffeded',
+    opacity: 0.6,
+  },
+  blob2: {
+    position: 'absolute',
+    top: 200,
+    left: -90,
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: '#fff8f0',
+    opacity: 0.5,
   },
   backButton: {
     position: 'absolute',
     top: 50,
     left: 20,
     zIndex: 10,
-    padding: 10,
-  },
-  resultHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: theme.white,
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 50,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.lightGray,
-  },
-  headerButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 8,
-    gap: 4,
-  },
-  scanAgainText: {
-    fontSize: 14,
-    color: colors.primary,
-    fontWeight: '500',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 6,
+    elevation: 3,
   },
   header: {
-    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 20,
+    paddingTop: 100,
+    paddingHorizontal: 20,
+  },
+  headerIcon: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: theme.primaryFaint,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
   },
   title: {
     fontSize: 28,
-    fontWeight: 'bold',
-    color: colors.black,
+    fontWeight: '800',
+    color: theme.dark,
     marginTop: 20,
+    letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: 16,
-    color: colors.gray,
+    fontSize: 14,
+    color: theme.gray,
     textAlign: 'center',
     marginTop: 10,
     paddingHorizontal: 20,
+    lineHeight: 20,
   },
   buttonRow: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    justifyContent: 'space-between',
     paddingHorizontal: 20,
-    marginBottom: 40,
+    marginTop: 40,
+    marginBottom: 30,
   },
   cameraButton: {
-    flex: 1,
-    backgroundColor: colors.primary,
-    padding: 20,
-    borderRadius: 12,
+    backgroundColor: theme.primary,
+    paddingVertical: 16,
+    borderRadius: 16,
     alignItems: 'center',
-    marginRight: 10,
+    gap: 8,
+    shadowColor: theme.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
   galleryButton: {
-    flex: 1,
-    backgroundColor: colors.secondary,
-    padding: 20,
-    borderRadius: 12,
+    backgroundColor: theme.secondary,
+    paddingVertical: 16,
+    borderRadius: 16,
     alignItems: 'center',
-    marginLeft: 10,
+    gap: 8,
+    shadowColor: theme.secondary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
   buttonText: {
-    color: colors.white,
+    color: theme.white,
     fontSize: 14,
-    fontWeight: 'bold',
-    marginTop: 8,
+    fontWeight: '600',
   },
   tipContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.lightGray,
-    padding: 15,
-    borderRadius: 10,
+    backgroundColor: theme.white,
+    padding: 16,
+    borderRadius: 16,
     marginHorizontal: 20,
-    marginBottom: 40,
+    marginTop: 20,
+    borderWidth: 1,
+    borderColor: theme.lightGray,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   tipText: {
     flex: 1,
-    fontSize: 14,
-    color: colors.gray,
-    marginLeft: 10,
+    fontSize: 13,
+    color: theme.gray,
+    marginLeft: 12,
+    lineHeight: 18,
   },
   scanningContainer: {
     flex: 1,
@@ -540,98 +719,133 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   previewImage: {
-    width: '100%',
+    width: width - 80,
     height: 200,
-    borderRadius: 12,
+    borderRadius: 16,
     marginBottom: 30,
   },
   scanningText: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: colors.black,
+    fontWeight: '700',
+    color: theme.dark,
     marginTop: 20,
   },
   scanningSubtext: {
     fontSize: 14,
-    color: colors.gray,
+    color: theme.gray,
     marginTop: 8,
+  },
+  resultHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 50,
+    paddingBottom: 16,
+    backgroundColor: theme.white,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.lightGray,
+  },
+  headerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 8,
+    gap: 4,
+  },
+  resultTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: theme.dark,
+  },
+  scanAgainText: {
+    fontSize: 13,
+    color: theme.primary,
+    fontWeight: '600',
   },
   resultsContainer: {
     flex: 1,
-    paddingHorizontal: 16,
+  },
+  resultsContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 100,
   },
   thumbnailImage: {
     width: '100%',
-    height: 150,
-    borderRadius: 12,
+    height: 160,
+    borderRadius: 16,
     marginVertical: 16,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: colors.black,
-    marginBottom: 12,
-  },
-  ingredientsWrapper: {
-    marginBottom: 24,
+    fontWeight: '800',
+    color: theme.dark,
+    marginBottom: 16,
+    letterSpacing: -0.3,
   },
   ingredientsList: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    marginBottom: 24,
   },
   ingredientChip: {
-    backgroundColor: colors.lightGray,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginRight: 8,
-    marginBottom: 8,
+    backgroundColor: theme.lightGray,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 24,
+    marginRight: 10,
+    marginBottom: 10,
   },
   ingredientChipSelected: {
-    backgroundColor: colors.primary,
+    backgroundColor: theme.primary,
   },
   ingredientText: {
     fontSize: 13,
-    color: colors.gray,
+    color: theme.gray,
+    fontWeight: '500',
   },
   ingredientTextSelected: {
-    color: colors.white,
-    fontWeight: '500',
+    color: theme.white,
   },
   matchingSection: {
     marginBottom: 20,
   },
   noMatchesContainer: {
     alignItems: 'center',
-    paddingVertical: 40,
+    paddingVertical: 60,
   },
   noMatchesText: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: colors.gray,
-    marginTop: 12,
+    fontWeight: '700',
+    color: theme.gray,
+    marginTop: 16,
   },
   noMatchesSubtext: {
     fontSize: 13,
-    color: colors.gray,
+    color: theme.gray,
     textAlign: 'center',
-    marginTop: 6,
+    marginTop: 8,
+    lineHeight: 18,
   },
   recipeCard: {
     flexDirection: 'row',
-    backgroundColor: colors.white,
-    borderRadius: 12,
+    backgroundColor: theme.white,
+    borderRadius: 16,
     marginBottom: 12,
     padding: 12,
     borderWidth: 1,
-    borderColor: colors.lightGray,
+    borderColor: theme.lightGray,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   recipeImageContainer: {
     width: 70,
     height: 70,
-    borderRadius: 8,
+    borderRadius: 12,
     overflow: 'hidden',
-    backgroundColor: colors.lightGray,
+    backgroundColor: theme.lightGray,
   },
   recipeImage: {
     width: '100%',
@@ -650,56 +864,60 @@ const styles = StyleSheet.create({
   },
   recipeTitle: {
     fontSize: 14,
-    fontWeight: 'bold',
-    color: colors.black,
-    marginBottom: 4,
+    fontWeight: '700',
+    color: theme.dark,
+    marginBottom: 6,
   },
   recipeMatchBadge: {
-    backgroundColor: colors.primary + '20',
+    backgroundColor: theme.primaryFaint,
     alignSelf: 'flex-start',
     paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
-    marginBottom: 4,
+    paddingVertical: 3,
+    borderRadius: 12,
+    marginBottom: 6,
   },
   recipeMatchText: {
     fontSize: 10,
-    color: colors.primary,
-    fontWeight: 'bold',
+    color: theme.primary,
+    fontWeight: '700',
   },
   recipeMeta: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 2,
+    gap: 4,
   },
   recipeMetaText: {
     fontSize: 10,
-    color: colors.gray,
-    marginRight: 4,
+    color: theme.gray,
   },
-  recipeServings: {
-    fontSize: 10,
-    color: colors.gray,
+  generateButtonWrapper: {
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    right: 20,
   },
   generateButton: {
     flexDirection: 'row',
-    backgroundColor: colors.secondary,
-    marginHorizontal: 16,
-    marginBottom: 20,
+    backgroundColor: theme.secondary,
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
     gap: 8,
+    shadowColor: theme.secondary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
   generateButtonText: {
-    color: colors.white,
-    fontSize: 16,
-    fontWeight: 'bold',
+    color: theme.white,
+    fontSize: 15,
+    fontWeight: '700',
   },
   generatedContainer: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: theme.white,
     padding: 20,
   },
   generatedHeader: {
@@ -710,22 +928,23 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
     marginBottom: 20,
     borderBottomWidth: 1,
-    borderBottomColor: colors.lightGray,
+    borderBottomColor: theme.lightGray,
   },
   generatedTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: colors.primary,
+    fontWeight: '700',
+    color: theme.primary,
   },
   genRecipeTitle: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: colors.black,
+    fontWeight: '800',
+    color: theme.dark,
     marginBottom: 12,
+    letterSpacing: -0.5,
   },
   genRecipeDescription: {
     fontSize: 14,
-    color: colors.gray,
+    color: theme.gray,
     marginBottom: 16,
     lineHeight: 20,
   },
@@ -733,56 +952,66 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     marginBottom: 24,
+    gap: 12,
   },
   genMetaItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 16,
+    backgroundColor: theme.lightGray,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 16,
     gap: 4,
+  },
+  genMetaText: {
+    fontSize: 12,
+    color: theme.gray,
   },
   genSection: {
     marginBottom: 24,
   },
   genSectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: colors.black,
+    fontWeight: '800',
+    color: theme.dark,
     marginBottom: 12,
+    letterSpacing: -0.3,
   },
   genIngredientText: {
     fontSize: 14,
-    color: colors.black,
-    marginBottom: 6,
+    color: theme.dark,
+    marginBottom: 8,
+    lineHeight: 20,
   },
   genInstructionRow: {
     flexDirection: 'row',
-    marginBottom: 12,
+    marginBottom: 16,
   },
   genStepNumber: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: colors.primary,
+    backgroundColor: theme.primary,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
   genStepNumberText: {
-    color: colors.white,
+    color: theme.white,
     fontSize: 12,
     fontWeight: 'bold',
   },
   genInstructionText: {
     flex: 1,
     fontSize: 14,
-    color: colors.black,
+    color: theme.dark,
     lineHeight: 20,
   },
   genSaveButton: {
     flexDirection: 'row',
-    backgroundColor: colors.primary,
+    backgroundColor: theme.primary,
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
     gap: 8,
@@ -790,9 +1019,9 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   genSaveButtonText: {
-    color: colors.white,
+    color: theme.white,
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '700',
   },
 });
 

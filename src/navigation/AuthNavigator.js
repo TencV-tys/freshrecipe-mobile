@@ -15,5 +15,5 @@ const AuthNavigator = () => {
     </Stack.Navigator>
   );
 };
-
-export default AuthNavigator;
+ 
+export default AuthNavigator; 
