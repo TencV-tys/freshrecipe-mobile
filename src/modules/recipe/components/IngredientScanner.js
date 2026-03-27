@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -15,17 +15,24 @@ import * as ImagePicker from 'expo-image-picker';
 import Icon from 'react-native-vector-icons/Ionicons';
 import RecipeService from '../../recipe/services/recipe.service';
 import colors from '../../shared/constants/colors';
+import { BASE_IP } from '../../../api/apiConfig';
 
 const IngredientScanner = ({ onClose, onScanComplete, navigation }) => {
-  const [step, setStep] = useState('select'); // select, scanning, results
+  const [step, setStep] = useState('select');
   const [capturedImage, setCapturedImage] = useState(null);
   const [detectedIngredients, setDetectedIngredients] = useState([]);
   const [selectedIngredients, setSelectedIngredients] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [suggestedRecipes, setSuggestedRecipes] = useState([]);
-  const [showRecipes, setShowRecipes] = useState(false);
+  const [matchingRecipes, setMatchingRecipes] = useState([]);
   const [generatedRecipe, setGeneratedRecipe] = useState(null);
   const [showGeneratedRecipe, setShowGeneratedRecipe] = useState(false);
+
+  // Helper function to get image URL
+  const getImageUrl = (imagePath) => {
+    if (!imagePath) return null;
+    if (imagePath.startsWith('http')) return imagePath;
+    return `${BASE_IP}${imagePath}`;
+  };
 
   // Open camera
   const takePhoto = async () => {
@@ -67,7 +74,7 @@ const IngredientScanner = ({ onClose, onScanComplete, navigation }) => {
     }
   };
 
-  // Detect ingredients from image using RecipeService
+  // Detect ingredients from image
   const detectIngredients = async (imageUri) => {
     setStep('scanning');
     setLoading(true);
@@ -76,9 +83,11 @@ const IngredientScanner = ({ onClose, onScanComplete, navigation }) => {
       const result = await RecipeService.scanIngredients(imageUri);
       
       if (result.success) {
-        setDetectedIngredients(result.data.detected);
-        setSelectedIngredients(result.data.detected.map(i => i.name));
-        setSuggestedRecipes(result.data.recipes);
+        const ingredients = result.data.detected;
+        setDetectedIngredients(ingredients);
+        setSelectedIngredients(ingredients.map(i => i.name));
+        // Get matching recipes immediately
+        await fetchMatchingRecipes(ingredients.map(i => i.name));
         setStep('results');
       } else {
         Alert.alert('Error', result.error || 'Failed to detect ingredients');
@@ -93,29 +102,33 @@ const IngredientScanner = ({ onClose, onScanComplete, navigation }) => {
     }
   };
 
-  // Find recipes with selected ingredients
-  const findRecipes = async () => {
-    if (selectedIngredients.length === 0) {
-      Alert.alert('No ingredients', 'Please select at least one ingredient');
+  // Fetch matching recipes based on selected ingredients
+  const fetchMatchingRecipes = async (ingredients) => {
+    if (ingredients.length === 0) {
+      setMatchingRecipes([]);
       return;
     }
     
-    setLoading(true);
     try {
-      const result = await RecipeService.findRecipesByIngredients(selectedIngredients);
-      
+      const result = await RecipeService.findRecipesByIngredients(ingredients);
       if (result.success) {
-        setSuggestedRecipes(result.recipes);
-        setShowRecipes(true);
-      } else {
-        Alert.alert('Error', result.error || 'Failed to find recipes');
+        // Filter out recipes with 0% match
+        const filtered = (result.recipes || []).filter(r => r.matchPercentage > 0);
+        setMatchingRecipes(filtered);
       }
     } catch (error) {
-      console.error('Find recipes error:', error);
-      Alert.alert('Error', 'Failed to find recipes');
-    } finally {
-      setLoading(false);
+      console.error('Fetch recipes error:', error);
     }
+  };
+
+  // Toggle ingredient selection
+  const toggleIngredient = (ingredientName) => {
+    const newSelected = selectedIngredients.includes(ingredientName)
+      ? selectedIngredients.filter(i => i !== ingredientName)
+      : [...selectedIngredients, ingredientName];
+    
+    setSelectedIngredients(newSelected);
+    fetchMatchingRecipes(newSelected);
   };
 
   // Generate Filipino recipe using AI
@@ -143,54 +156,44 @@ const IngredientScanner = ({ onClose, onScanComplete, navigation }) => {
     }
   };
 
-   // Save generated recipe to user's collection
-const saveGeneratedRecipe = async () => {
-  if (!generatedRecipe) return;
-  
-  setLoading(true);
-  try {
-    const result = await RecipeService.saveGeneratedRecipe(generatedRecipe);
+  // Save generated recipe
+  const saveGeneratedRecipe = async () => {
+    if (!generatedRecipe) return;
     
-    if (result.success) {
-      Alert.alert('Saved!', 'AI-generated recipe added to your collection');
-      setShowGeneratedRecipe(false);
-      onClose();
-    } else {
-      Alert.alert('Error', result.error || 'Failed to save recipe');
+    setLoading(true);
+    try {
+      const result = await RecipeService.saveGeneratedRecipe(generatedRecipe);
+      
+      if (result.success) {
+        Alert.alert('Saved!', 'AI-generated recipe added to your collection');
+        setShowGeneratedRecipe(false);
+        onClose();
+      } else {
+        Alert.alert('Error', result.error || 'Failed to save recipe');
+      }
+    } catch (error) {
+      console.error('Save error:', error);
+      Alert.alert('Error', 'Failed to save recipe');
+    } finally {
+      setLoading(false);
     }
-  } catch (error) {
-    console.error('Save error:', error);
-    Alert.alert('Error', 'Failed to save recipe');
-  } finally {
-    setLoading(false);
-  }
-};
-
-  // Toggle ingredient selection
-  const toggleIngredient = (ingredientName) => {
-    setSelectedIngredients(prev =>
-      prev.includes(ingredientName)
-        ? prev.filter(i => i !== ingredientName)
-        : [...prev, ingredientName]
-    );
   };
 
-  // Handle confirm and go back to finder
-  const handleConfirm = () => {
-    if (selectedIngredients.length > 0) {
-      onScanComplete(selectedIngredients);
-      onClose();
-    } else {
-      Alert.alert('No ingredients', 'Please select at least one ingredient');
-    }
+  // Scan again - go back to camera/gallery
+  const handleScanAgain = () => {
+    setStep('select');
+    setCapturedImage(null);
+    setDetectedIngredients([]);
+    setSelectedIngredients([]);
+    setMatchingRecipes([]);
   };
 
   // Render select mode (camera or gallery)
   if (step === 'select') {
     return (
       <View style={styles.container}>
-        <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-          <Icon name="close" size={28} color={colors.black} />
+        <TouchableOpacity style={styles.backButton} onPress={onClose}>
+          <Icon name="arrow-back" size={28} color={colors.black} />
         </TouchableOpacity>
 
         <View style={styles.header}>
@@ -227,7 +230,7 @@ const saveGeneratedRecipe = async () => {
   if (step === 'scanning') {
     return (
       <View style={styles.container}>
-        <TouchableOpacity style={styles.closeButton} onPress={() => setStep('select')}>
+        <TouchableOpacity style={styles.backButton} onPress={handleScanAgain}>
           <Icon name="arrow-back" size={28} color={colors.black} />
         </TouchableOpacity>
         
@@ -243,147 +246,124 @@ const saveGeneratedRecipe = async () => {
     );
   }
 
-  // Render results mode (detected ingredients)
+  // Render results mode
   if (step === 'results') {
     return (
       <View style={styles.container}>
-        <TouchableOpacity style={styles.closeButton} onPress={() => setStep('select')}>
-          <Icon name="arrow-back" size={28} color={colors.black} />
-        </TouchableOpacity>
+        {/* Header with Back and Scan Again */}
+        <View style={styles.resultHeader}>
+          <TouchableOpacity onPress={onClose} style={styles.headerButton}>
+            <Icon name="arrow-back" size={24} color={colors.black} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleScanAgain} style={styles.headerButton}>
+            <Icon name="refresh-outline" size={24} color={colors.primary} />
+            <Text style={styles.scanAgainText}>Scan Again</Text>
+          </TouchableOpacity>
+        </View>
 
-        <ScrollView style={styles.resultsContainer}>
+        <ScrollView style={styles.resultsContainer} showsVerticalScrollIndicator={false}>
+          {/* Captured Image Thumbnail */}
           {capturedImage && (
-            <Image source={{ uri: capturedImage }} style={styles.resultImage} />
+            <Image source={{ uri: capturedImage }} style={styles.thumbnailImage} />
           )}
           
-          <Text style={styles.sectionTitle}>Detected Ingredients</Text>
-          <Text style={styles.sectionSubtitle}>Tap to select ingredients you have:</Text>
-          
-          <View style={styles.ingredientsList}>
-            {detectedIngredients.map((ing, index) => (
-              <TouchableOpacity
-                key={index}
-                style={[
-                  styles.ingredientChip,
-                  selectedIngredients.includes(ing.name) && styles.ingredientChipSelected
-                ]}
-                onPress={() => toggleIngredient(ing.name)}
-              >
-                <Text style={[
-                  styles.ingredientText,
-                  selectedIngredients.includes(ing.name) && styles.ingredientTextSelected
-                ]}>
-                  {ing.name} ({ing.confidence}%)
-                </Text>
-              </TouchableOpacity>
-            ))}
+          {/* Detected Ingredients Section */}
+          <Text style={styles.sectionTitle}>📋 Detected Ingredients</Text>
+          <View style={styles.ingredientsWrapper}>
+            <View style={styles.ingredientsList}>
+              {detectedIngredients.map((ing, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.ingredientChip,
+                    selectedIngredients.includes(ing.name) && styles.ingredientChipSelected
+                  ]}
+                  onPress={() => toggleIngredient(ing.name)}
+                >
+                  <Text style={[
+                    styles.ingredientText,
+                    selectedIngredients.includes(ing.name) && styles.ingredientTextSelected
+                  ]}>
+                    {selectedIngredients.includes(ing.name) ? '✓' : '○'} {ing.name} ({ing.confidence}%)
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
 
-          <View style={styles.actionButtons}>
-            <TouchableOpacity style={styles.retakeButton} onPress={() => setStep('select')}>
-              <Icon name="refresh" size={20} color={colors.primary} />
-              <Text style={styles.retakeText}>Scan Again</Text>
-            </TouchableOpacity>
+          {/* Matching Recipes Section */}
+          <View style={styles.matchingSection}>
+            <Text style={styles.sectionTitle}>
+              🍽️ Matching Recipes ({matchingRecipes.length} found)
+            </Text>
             
-            <TouchableOpacity
-              style={[styles.findButton, !selectedIngredients.length && styles.findButtonDisabled]}
-              onPress={findRecipes}
-              disabled={!selectedIngredients.length || loading}
-            >
-              {loading ? (
-                <ActivityIndicator color={colors.white} />
-              ) : (
-                <>
-                  <Icon name="restaurant-outline" size={20} color={colors.white} />
-                  <Text style={styles.findButtonText}>
-                    Find Recipes ({selectedIngredients.length})
-                  </Text>
-                </>
-              )}
-            </TouchableOpacity>
-          </View>
-
-          {/* Generate Filipino Recipe Button */}
-          <View style={styles.generateContainer}>
-            <TouchableOpacity
-              style={[styles.generateButton, !selectedIngredients.length && styles.generateButtonDisabled]}
-              onPress={generateFilipinoRecipe}
-              disabled={!selectedIngredients.length || loading}
-            >
-              {loading ? (
-                <ActivityIndicator color={colors.white} />
-              ) : (
-                <>
-                  <Icon name="sparkles" size={20} color={colors.white} />
-                  <Text style={styles.generateButtonText}>
-                    Generate Filipino Recipe
-                  </Text>
-                </>
-              )}
-            </TouchableOpacity>
+            {matchingRecipes.length === 0 ? (
+              <View style={styles.noMatchesContainer}>
+                <Icon name="restaurant-outline" size={48} color={colors.gray} />
+                <Text style={styles.noMatchesText}>No matching recipes</Text>
+                <Text style={styles.noMatchesSubtext}>
+                  Try selecting different ingredients or generate a new recipe!
+                </Text>
+              </View>
+            ) : (
+              matchingRecipes.map((recipe, index) => (
+                <TouchableOpacity
+                  key={recipe.id || recipe._id || index}
+                  style={styles.recipeCard}
+                  onPress={() => {
+                    onScanComplete(selectedIngredients);
+                    onClose();
+                    navigation?.navigate('RecipeDetail', { recipeId: recipe.id || recipe._id });
+                  }}
+                >
+                  <View style={styles.recipeImageContainer}>
+                    {recipe.image ? (
+                      <Image source={{ uri: getImageUrl(recipe.image) }} style={styles.recipeImage} />
+                    ) : (
+                      <View style={styles.recipeImagePlaceholder}>
+                        <Icon name="restaurant-outline" size={24} color={colors.gray} />
+                      </View>
+                    )}
+                  </View>
+                  <View style={styles.recipeInfo}>
+                    <Text style={styles.recipeTitle} numberOfLines={1}>
+                      {recipe.title}
+                    </Text>
+                    <View style={styles.recipeMatchBadge}>
+                      <Text style={styles.recipeMatchText}>{recipe.matchPercentage}% match</Text>
+                    </View>
+                    <View style={styles.recipeMeta}>
+                      <Text style={styles.recipeMetaText}>
+                        {(recipe.prepTime || 0) + (recipe.cookTime || 0)} min
+                      </Text>
+                      <Text style={styles.recipeMetaText}>•</Text>
+                      <Text style={styles.recipeMetaText}>{recipe.mealType}</Text>
+                      <Text style={styles.recipeMetaText}>•</Text>
+                      <Text style={styles.recipeMetaText}>{recipe.difficulty}</Text>
+                    </View>
+                    <Text style={styles.recipeServings}>👥 {recipe.servings} servings</Text>
+                  </View>
+                </TouchableOpacity>
+              ))
+            )}
           </View>
         </ScrollView>
 
-        {/* Recipe Suggestions Modal */}
-        <Modal visible={showRecipes} animationType="slide" presentationStyle="fullScreen">
-          <View style={styles.recipesModalContainer}>
-            <View style={styles.modalHeader}>
-              <TouchableOpacity onPress={() => setShowRecipes(false)}>
-                <Icon name="arrow-back" size={28} color={colors.black} />
-              </TouchableOpacity>
-              <Text style={styles.modalTitle}>Suggested Recipes</Text>
-              <TouchableOpacity onPress={handleConfirm}>
-                <Icon name="checkmark" size={28} color={colors.primary} />
-              </TouchableOpacity>
-            </View>
-            
-            {suggestedRecipes.length === 0 ? (
-              <View style={styles.noRecipesContainer}>
-                <Icon name="restaurant-outline" size={64} color={colors.gray} />
-                <Text style={styles.noRecipesText}>No recipes found</Text>
-                <Text style={styles.noRecipesSubtext}>
-                  Try selecting different ingredients
-                </Text>
-                <TouchableOpacity 
-                  style={styles.backButton}
-                  onPress={() => setShowRecipes(false)}
-                >
-                  <Text style={styles.backButtonText}>Go Back</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <FlatList
-                data={suggestedRecipes}
-                keyExtractor={(item) => (item.id || item._id)?.toString()}
-                renderItem={({ item }) => (
-                  <TouchableOpacity 
-                    style={styles.recipeCard}
-                    onPress={() => {
-                      onScanComplete(selectedIngredients);
-                      onClose();
-                      navigation?.navigate('RecipeDetail', { recipeId: item.id || item._id });
-                    }}
-                  >
-                    {item.image && (
-                      <Image source={{ uri: item.image }} style={styles.recipeImage} />
-                    )}
-                    <View style={styles.recipeInfo}>
-                      <Text style={styles.recipeTitle}>{item.title}</Text>
-                      <Text style={styles.recipeMatch}>
-                        {item.matchPercentage}% match
-                      </Text>
-                      <View style={styles.recipeTags}>
-                        <Text style={styles.recipeTag}>{item.mealType}</Text>
-                        <Text style={styles.recipeTag}>{item.difficulty}</Text>
-                      </View>
-                    </View>
-                  </TouchableOpacity>
-                )}
-                contentContainerStyle={styles.recipesList}
-              />
-            )}
-          </View>
-        </Modal>
+        {/* Generate Filipino Recipe Button */}
+        <TouchableOpacity
+          style={styles.generateButton}
+          onPress={generateFilipinoRecipe}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color={colors.white} />
+          ) : (
+            <>
+              <Icon name="sparkles" size={20} color={colors.white} />
+              <Text style={styles.generateButtonText}>Generate Filipino Recipe</Text>
+            </>
+          )}
+        </TouchableOpacity>
 
         {/* Generated Recipe Modal */}
         <Modal visible={showGeneratedRecipe} animationType="slide" presentationStyle="fullScreen">
@@ -400,50 +380,52 @@ const saveGeneratedRecipe = async () => {
             
             {generatedRecipe && (
               <>
-                <Text style={styles.recipeTitle}>{generatedRecipe.title}</Text>
-                <Text style={styles.recipeDescription}>{generatedRecipe.description}</Text>
+                <Text style={styles.genRecipeTitle}>{generatedRecipe.title}</Text>
+                <Text style={styles.genRecipeDescription}>{generatedRecipe.description}</Text>
                 
-                <View style={styles.metaRow}>
-                  <View style={styles.metaItem}>
-                    <Icon name="time-outline" size={16} color={colors.gray} />
+                <View style={styles.genMetaRow}>
+                  <View style={styles.genMetaItem}>
+                    <Icon name="time-outline" size={14} color={colors.gray} />
                     <Text>{generatedRecipe.prepTime + generatedRecipe.cookTime} min</Text>
                   </View>
-                  <View style={styles.metaItem}>
-                    <Icon name="restaurant-outline" size={16} color={colors.gray} />
+                  <View style={styles.genMetaItem}>
+                    <Icon name="restaurant-outline" size={14} color={colors.gray} />
                     <Text>{generatedRecipe.mealType}</Text>
                   </View>
-                  <View style={styles.metaItem}>
-                    <Icon name="flame-outline" size={16} color={colors.gray} />
+                  <View style={styles.genMetaItem}>
+                    <Icon name="flame-outline" size={14} color={colors.gray} />
                     <Text>{generatedRecipe.difficulty}</Text>
                   </View>
-                  <View style={styles.metaItem}>
-                    <Icon name="people-outline" size={16} color={colors.gray} />
+                  <View style={styles.genMetaItem}>
+                    <Icon name="people-outline" size={14} color={colors.gray} />
                     <Text>{generatedRecipe.servings} servings</Text>
                   </View>
                 </View>
                 
-                <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>🍳 Ingredients</Text>
+                <View style={styles.genSection}>
+                  <Text style={styles.genSectionTitle}>🍳 Ingredients</Text>
                   {generatedRecipe.ingredients?.map((ing, i) => (
-                    <View key={i} style={styles.ingredientRow}>
-                      <Text>• {ing.quantity} {ing.unit} {ing.name}</Text>
-                    </View>
+                    <Text key={i} style={styles.genIngredientText}>
+                      • {ing.quantity} {ing.unit} {ing.name}
+                    </Text>
                   ))}
                 </View>
                 
-                <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>📝 Instructions</Text>
+                <View style={styles.genSection}>
+                  <Text style={styles.genSectionTitle}>📝 Instructions</Text>
                   {generatedRecipe.instructions?.map((inst, i) => (
-                    <View key={i} style={styles.instructionRow}>
-                      <View style={styles.stepNumber}><Text>{inst.step || i+1}</Text></View>
-                      <Text style={styles.instructionText}>{inst.text}</Text>
+                    <View key={i} style={styles.genInstructionRow}>
+                      <View style={styles.genStepNumber}>
+                        <Text style={styles.genStepNumberText}>{inst.step || i + 1}</Text>
+                      </View>
+                      <Text style={styles.genInstructionText}>{inst.text}</Text>
                     </View>
                   ))}
                 </View>
                 
-                <TouchableOpacity style={styles.saveButton} onPress={saveGeneratedRecipe}>
+                <TouchableOpacity style={styles.genSaveButton} onPress={saveGeneratedRecipe}>
                   <Icon name="bookmark" size={20} color={colors.white} />
-                  <Text style={styles.saveButtonText}>Save to My Recipes</Text>
+                  <Text style={styles.genSaveButtonText}>Save to My Recipes</Text>
                 </TouchableOpacity>
               </>
             )}
@@ -461,12 +443,33 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.white,
   },
-  closeButton: {
+  backButton: {
     position: 'absolute',
     top: 50,
-    right: 20,
+    left: 20,
     zIndex: 10,
     padding: 10,
+  },
+  resultHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 50,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.lightGray,
+  },
+  headerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 8,
+    gap: 4,
+  },
+  scanAgainText: {
+    fontSize: 14,
+    color: colors.primary,
+    fontWeight: '500',
   },
   header: {
     flex: 1,
@@ -555,161 +558,64 @@ const styles = StyleSheet.create({
   },
   resultsContainer: {
     flex: 1,
-    padding: 20,
-    paddingTop: 80,
+    paddingHorizontal: 16,
   },
-  resultImage: {
+  thumbnailImage: {
     width: '100%',
-    height: 200,
+    height: 150,
     borderRadius: 12,
-    marginBottom: 20,
+    marginVertical: 16,
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
     color: colors.black,
-    marginBottom: 8,
+    marginBottom: 12,
   },
-  sectionSubtitle: {
-    fontSize: 14,
-    color: colors.gray,
-    marginBottom: 16,
+  ingredientsWrapper: {
+    marginBottom: 24,
   },
   ingredientsList: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginBottom: 24,
   },
   ingredientChip: {
     backgroundColor: colors.lightGray,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 25,
-    marginRight: 10,
-    marginBottom: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginRight: 8,
+    marginBottom: 8,
   },
   ingredientChipSelected: {
     backgroundColor: colors.primary,
   },
   ingredientText: {
-    fontSize: 14,
+    fontSize: 13,
     color: colors.gray,
   },
   ingredientTextSelected: {
     color: colors.white,
-    fontWeight: 'bold',
+    fontWeight: '500',
   },
-  actionButtons: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 20,
-    marginBottom: 16,
+  matchingSection: {
+    marginBottom: 20,
   },
-  retakeButton: {
-    flex: 1,
-    flexDirection: 'row',
-    backgroundColor: colors.lightGray,
-    padding: 15,
-    borderRadius: 10,
-    justifyContent: 'center',
+  noMatchesContainer: {
     alignItems: 'center',
-    gap: 8,
+    paddingVertical: 40,
   },
-  retakeText: {
-    color: colors.primary,
+  noMatchesText: {
     fontSize: 16,
-    fontWeight: 'bold',
-  },
-  findButton: {
-    flex: 2,
-    flexDirection: 'row',
-    backgroundColor: colors.primary,
-    padding: 15,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
-  },
-  findButtonDisabled: {
-    backgroundColor: colors.gray,
-  },
-  findButtonText: {
-    color: colors.white,
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  generateContainer: {
-    marginTop: 8,
-    marginBottom: 30,
-  },
-  generateButton: {
-    flexDirection: 'row',
-    backgroundColor: colors.secondary,
-    padding: 15,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
-  },
-  generateButtonDisabled: {
-    backgroundColor: colors.gray,
-  },
-  generateButtonText: {
-    color: colors.white,
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  recipesModalContainer: {
-    flex: 1,
-    backgroundColor: colors.white,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 50,
-    paddingBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.lightGray,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: colors.black,
-  },
-  noRecipesContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  noRecipesText: {
-    fontSize: 18,
     fontWeight: 'bold',
     color: colors.gray,
-    marginTop: 16,
+    marginTop: 12,
   },
-  noRecipesSubtext: {
-    fontSize: 14,
+  noMatchesSubtext: {
+    fontSize: 13,
     color: colors.gray,
-    marginTop: 8,
     textAlign: 'center',
-  },
-  backButton: {
-    marginTop: 20,
-    backgroundColor: colors.primary,
-    paddingHorizontal: 30,
-    paddingVertical: 12,
-    borderRadius: 10,
-  },
-  backButtonText: {
-    color: colors.white,
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  recipesList: {
-    padding: 16,
+    marginTop: 6,
   },
   recipeCard: {
     flexDirection: 'row',
@@ -717,16 +623,25 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 12,
     padding: 12,
-    shadowColor: colors.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: colors.lightGray,
+  },
+  recipeImageContainer: {
+    width: 70,
+    height: 70,
+    borderRadius: 8,
+    overflow: 'hidden',
+    backgroundColor: colors.lightGray,
   },
   recipeImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 8,
+    width: '100%',
+    height: '100%',
+  },
+  recipeImagePlaceholder: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   recipeInfo: {
     flex: 1,
@@ -734,27 +649,53 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   recipeTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
     color: colors.black,
+    marginBottom: 4,
   },
-  recipeMatch: {
-    fontSize: 12,
-    color: colors.primary,
-    marginTop: 4,
-  },
-  recipeTags: {
-    flexDirection: 'row',
-    marginTop: 6,
-  },
-  recipeTag: {
-    fontSize: 10,
-    color: colors.gray,
-    backgroundColor: colors.lightGray,
+  recipeMatchBadge: {
+    backgroundColor: colors.primary + '20',
+    alignSelf: 'flex-start',
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 10,
-    marginRight: 6,
+    marginBottom: 4,
+  },
+  recipeMatchText: {
+    fontSize: 10,
+    color: colors.primary,
+    fontWeight: 'bold',
+  },
+  recipeMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 2,
+  },
+  recipeMetaText: {
+    fontSize: 10,
+    color: colors.gray,
+    marginRight: 4,
+  },
+  recipeServings: {
+    fontSize: 10,
+    color: colors.gray,
+  },
+  generateButton: {
+    flexDirection: 'row',
+    backgroundColor: colors.secondary,
+    marginHorizontal: 16,
+    marginBottom: 20,
+    padding: 16,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+  },
+  generateButtonText: {
+    color: colors.white,
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   generatedContainer: {
     flex: 1,
@@ -776,41 +717,48 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: colors.primary,
   },
-  recipeTitle: {
+  genRecipeTitle: {
     fontSize: 24,
     fontWeight: 'bold',
     color: colors.black,
     marginBottom: 12,
   },
-  recipeDescription: {
+  genRecipeDescription: {
     fontSize: 14,
     color: colors.gray,
     marginBottom: 16,
     lineHeight: 20,
   },
-  metaRow: {
+  genMetaRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     marginBottom: 24,
   },
-  metaItem: {
+  genMetaItem: {
     flexDirection: 'row',
     alignItems: 'center',
     marginRight: 16,
     gap: 4,
   },
-  section: {
+  genSection: {
     marginBottom: 24,
   },
-  ingredientRow: {
-    flexDirection: 'row',
-    marginBottom: 8,
+  genSectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: colors.black,
+    marginBottom: 12,
   },
-  instructionRow: {
+  genIngredientText: {
+    fontSize: 14,
+    color: colors.black,
+    marginBottom: 6,
+  },
+  genInstructionRow: {
     flexDirection: 'row',
     marginBottom: 12,
   },
-  stepNumber: {
+  genStepNumber: {
     width: 28,
     height: 28,
     borderRadius: 14,
@@ -819,13 +767,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 12,
   },
-  instructionText: {
+  genStepNumberText: {
+    color: colors.white,
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  genInstructionText: {
     flex: 1,
     fontSize: 14,
     color: colors.black,
     lineHeight: 20,
   },
-  saveButton: {
+  genSaveButton: {
     flexDirection: 'row',
     backgroundColor: colors.primary,
     padding: 16,
@@ -836,7 +789,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
     marginBottom: 40,
   },
-  saveButtonText: {
+  genSaveButtonText: {
     color: colors.white,
     fontSize: 16,
     fontWeight: 'bold',
