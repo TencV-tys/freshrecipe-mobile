@@ -12,12 +12,14 @@ export default StyleSheet.create({
     alignItems: 'center',
     padding: 32,
   },
-  // Search Section - Clean, no extra white space
-  searchSection: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 12,
+  // Sticky Header - Always visible at top
+  stickyHeader: {
     backgroundColor: colors.white,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.lightGray,
   },
   searchContainer: {
     flexDirection: 'row',
@@ -25,7 +27,7 @@ export default StyleSheet.create({
     backgroundColor: colors.lightGray,
     borderRadius: 12,
     paddingHorizontal: 12,
-    paddingVertical: 4,
+    paddingVertical: 8,
     marginBottom: 12,
   },
   searchIcon: {
@@ -33,13 +35,13 @@ export default StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: 8,
     fontSize: 16,
     color: colors.black,
   },
   filterContainer: {
     flexDirection: 'row',
-    marginBottom: 4,
+    marginBottom: 12,
   },
   filterChip: {
     paddingHorizontal: 16,
@@ -67,8 +69,6 @@ export default StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.secondary,
-    marginHorizontal: 16,
-    marginBottom: 12,
     paddingVertical: 12,
     borderRadius: 12,
     gap: 8,
@@ -81,6 +81,7 @@ export default StyleSheet.create({
   listContent: {
     paddingHorizontal: 16,
     paddingBottom: 80,
+    paddingTop: 8,
   },
   emptyText: {
     fontSize: 18,

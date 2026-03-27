@@ -91,58 +91,60 @@ const RecipeFinderScreen = () => {
     return user?.savedRecipes?.includes(recipeId) || false;
   };
 
+  // Header Section - Sticky at top
   const renderHeader = () => (
-    <>
-      <View style={styles.searchSection}>
-        <View style={styles.searchContainer}>
-          <Icon name="search" size={20} color={colors.gray} style={styles.searchIcon} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search recipes..."
-            placeholderTextColor={colors.gray}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            returnKeyType="search"
-            onSubmitEditing={() => fetchRecipes()}
-          />
-          {searchQuery ? (
-            <TouchableOpacity onPress={clearSearch}>
-              <Icon name="close-circle" size={20} color={colors.gray} />
-            </TouchableOpacity>
-          ) : null}
-        </View>
-
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false} 
-          style={styles.filterContainer}
-          contentContainerStyle={styles.filterContent}
-        >
-          <TouchableOpacity
-            style={[styles.filterChip, !selectedMealType && styles.filterChipActive]}
-            onPress={() => setSelectedMealType('')}
-          >
-            <Text style={[styles.filterText, !selectedMealType && styles.filterTextActive]}>All</Text>
+    <View style={styles.stickyHeader}>
+      {/* Search Bar */}
+      <View style={styles.searchContainer}>
+        <Icon name="search" size={20} color={colors.gray} style={styles.searchIcon} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search recipes..."
+          placeholderTextColor={colors.gray}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          returnKeyType="search"
+          onSubmitEditing={() => fetchRecipes()}
+        />
+        {searchQuery ? (
+          <TouchableOpacity onPress={clearSearch}>
+            <Icon name="close-circle" size={20} color={colors.gray} />
           </TouchableOpacity>
-          {mealTypes.map((type) => (
-            <TouchableOpacity
-              key={type}
-              style={[styles.filterChip, selectedMealType === type && styles.filterChipActive]}
-              onPress={() => setSelectedMealType(type)}
-            >
-              <Text style={[styles.filterText, selectedMealType === type && styles.filterTextActive]}>
-                {type}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        ) : null}
       </View>
 
+      {/* Filter Chips */}
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false} 
+        style={styles.filterContainer}
+        contentContainerStyle={styles.filterContent}
+      >
+        <TouchableOpacity
+          style={[styles.filterChip, !selectedMealType && styles.filterChipActive]}
+          onPress={() => setSelectedMealType('')}
+        >
+          <Text style={[styles.filterText, !selectedMealType && styles.filterTextActive]}>All</Text>
+        </TouchableOpacity>
+        {mealTypes.map((type) => (
+          <TouchableOpacity
+            key={type}
+            style={[styles.filterChip, selectedMealType === type && styles.filterChipActive]}
+            onPress={() => setSelectedMealType(type)}
+          >
+            <Text style={[styles.filterText, selectedMealType === type && styles.filterTextActive]}>
+              {type}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
+      {/* Scan Button */}
       <TouchableOpacity style={styles.scannerButton} onPress={() => setShowScanner(true)}>
         <Icon name="camera" size={24} color={colors.white} />
         <Text style={styles.scannerButtonText}>Scan Ingredients</Text>
       </TouchableOpacity>
-    </>
+    </View>
   );
 
   const renderEmptyState = () => (
@@ -157,55 +159,57 @@ const RecipeFinderScreen = () => {
     </View>
   );
 
-  const renderContent = () => {
-    if (loading) {
-      return (
+  if (loading && !refreshing) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <StatusBar barStyle="dark-content" backgroundColor={colors.white} />
+        {renderHeader()}
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>Loading recipes...</Text>
         </View>
-      );
-    }
-
-    if (recipes.length === 0) {
-      return renderEmptyState();
-    }
-
-    return (
-      <FlatList
-        data={recipes}
-        keyExtractor={(item) => (item.id || item._id)?.toString()}
-        renderItem={({ item }) => {
-          const recipeId = item.id || item._id;
-          const saved = isRecipeSaved(recipeId);
-          return (
-            <RecipeCard
-              recipe={item}
-              onPress={() => handleRecipePress(item)}
-              onSave={() => handleSave(item)}
-              isSaved={saved}
-            />
-          );
-        }}
-        refreshControl={
-          <RefreshControl 
-            refreshing={refreshing} 
-            onRefresh={onRefresh} 
-            colors={[colors.primary]}
-            tintColor={colors.primary}
-          />
-        }
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        ListHeaderComponent={renderHeader}
-      />
+      </SafeAreaView>
     );
-  };
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.white} />
-      {renderContent()}
+      
+      {/* Sticky Header - Always visible */}
+      {renderHeader()}
+
+      {/* Scrollable Content - Only recipes scroll */}
+      {recipes.length === 0 ? (
+        renderEmptyState()
+      ) : (
+        <FlatList
+          data={recipes}
+          keyExtractor={(item) => (item.id || item._id)?.toString()}
+          renderItem={({ item }) => {
+            const recipeId = item.id || item._id;
+            const saved = isRecipeSaved(recipeId);
+            return (
+              <RecipeCard
+                recipe={item}
+                onPress={() => handleRecipePress(item)}
+                onSave={() => handleSave(item)}
+                isSaved={saved}
+              />
+            );
+          }}
+          refreshControl={
+            <RefreshControl 
+              refreshing={refreshing} 
+              onRefresh={onRefresh} 
+              colors={[colors.primary]}
+              tintColor={colors.primary}
+            />
+          }
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
 
       <Modal 
         visible={showScanner} 
