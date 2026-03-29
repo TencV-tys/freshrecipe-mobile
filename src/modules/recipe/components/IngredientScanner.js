@@ -247,6 +247,7 @@ const pickImage = async () => {
  
 
 // Detect ingredients from image
+// Detect ingredients from image
 const detectIngredients = async (imageUri) => {
   setStep('scanning');
   setLoading(true);
@@ -254,6 +255,7 @@ const detectIngredients = async (imageUri) => {
   try {
     const result = await RecipeService.scanIngredients(imageUri);
     
+    // ✅ Check if detection was successful and has ingredients
     if (result.success && result.data.detected && result.data.detected.length > 0) {
       const ingredients = result.data.detected;
       console.log('✅ Ingredients detected:', ingredients);
@@ -261,24 +263,20 @@ const detectIngredients = async (imageUri) => {
       setDetectedIngredients(ingredients);
       setSelectedIngredients(ingredients.map(i => i.name));
       
-      // ✅ USE THE RECIPES FROM THE SCAN RESPONSE
-      // The backend already found matching recipes during the scan
+      // ✅ Get matching recipes from scan response
       const matchingRecipesFromScan = result.data.recipes || [];
-      console.log('📊 Matching recipes from scan:', matchingRecipesFromScan.length);
-      
-      // Filter out 0% matches
       const filteredRecipes = matchingRecipesFromScan.filter(r => r.matchPercentage > 0);
       setMatchingRecipes(filteredRecipes);
       
-      setStep('results'); // Go to results screen
+      setStep('results');
     } else {
-      // No ingredients detected - go back to select screen
+      // ✅ NO FALLBACK - just show alert and go back to select screen
       console.log('⚠️ No ingredients detected');
       setStep('select');
       
       Alert.alert(
         'No Ingredients Detected',
-        result.error || 'Could not detect any ingredients in this image.\n\nPlease try:\n• Using a clearer image\n• Placing ingredients on a plain background\n• Making sure ingredients are well-lit',
+        'We could not detect any ingredients in this image.\n\nPlease try:\n• Using a clearer image\n• Placing ingredients on a plain background\n• Making sure ingredients are well-lit',
         [{ text: 'Try Again' }]
       );
     }
@@ -286,9 +284,10 @@ const detectIngredients = async (imageUri) => {
     console.error('Detection error:', error);
     setStep('select');
     
+    // ✅ NO FALLBACK - just show error alert
     Alert.alert(
       'Scan Failed',
-      'Failed to detect ingredients. Please try again with a clearer image.',
+      error.message || 'Failed to scan image. Please try again.',
       [{ text: 'OK' }]
     );
   } finally {

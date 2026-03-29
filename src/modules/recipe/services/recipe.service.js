@@ -113,35 +113,23 @@ class RecipeService {
     
     console.log('✅ Scan response:', response.data);
     
-    // Check if ingredients were detected
     const detectedIngredients = response.data?.detected || [];
     
+    // ✅ If no ingredients detected, return empty array (no fallback)
     if (detectedIngredients.length === 0) {
       console.log('⚠️ No ingredients detected in image');
       return { 
         success: false, 
-        error: 'No ingredients detected. Please try again with a clearer image of ingredients.',
+        error: 'No ingredients detected. Please try again with a clearer image.',
         data: { detected: [] }
-      };
-    }
-    
-    // Check confidence levels - filter out low confidence detections
-    const highConfidenceIngredients = detectedIngredients.filter(ing => ing.confidence >= 50);
-    
-    if (highConfidenceIngredients.length === 0) {
-      console.log('⚠️ Only low confidence ingredients detected');
-      return { 
-        success: false, 
-        error: 'Could not confidently detect ingredients. Please try with a clearer image.',
-        data: { detected: detectedIngredients }
       };
     }
     
     return { 
       success: true, 
       data: {
-        detected: highConfidenceIngredients,
-        allDetected: detectedIngredients
+        detected: detectedIngredients,
+        recipes: response.data.recipes || []
       }
     };
     
