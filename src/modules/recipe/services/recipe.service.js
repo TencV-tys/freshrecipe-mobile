@@ -10,7 +10,7 @@ class RecipeService {
     } catch (error) {
       console.error('Failed to fetch recipes:', error);
       return { success: false, recipes: [], error: error.response?.data?.message };
-    }
+    } 
   }
 
   async getRecipeById(recipeId) {
