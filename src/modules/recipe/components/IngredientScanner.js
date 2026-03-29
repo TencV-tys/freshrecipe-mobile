@@ -246,7 +246,7 @@ const pickImage = async () => {
 };
  
 
-  // Detect ingredients from image
+// Detect ingredients from image
 const detectIngredients = async (imageUri) => {
   setStep('scanning');
   setLoading(true);
@@ -260,64 +260,59 @@ const detectIngredients = async (imageUri) => {
       
       setDetectedIngredients(ingredients);
       setSelectedIngredients(ingredients.map(i => i.name));
-      await fetchMatchingRecipes(ingredients.map(i => i.name));
+      
+      // ✅ USE THE RECIPES FROM THE SCAN RESPONSE
+      // The backend already found matching recipes during the scan
+      const matchingRecipesFromScan = result.data.recipes || [];
+      console.log('📊 Matching recipes from scan:', matchingRecipesFromScan.length);
+      
+      // Filter out 0% matches
+      const filteredRecipes = matchingRecipesFromScan.filter(r => r.matchPercentage > 0);
+      setMatchingRecipes(filteredRecipes);
+      
       setStep('results'); // Go to results screen
     } else {
-      // No ingredients detected - go back to select screen, NOT close the modal
+      // No ingredients detected - go back to select screen
       console.log('⚠️ No ingredients detected');
-      setStep('select'); // Go back to select screen
+      setStep('select');
       
       Alert.alert(
         'No Ingredients Detected',
         result.error || 'Could not detect any ingredients in this image.\n\nPlease try:\n• Using a clearer image\n• Placing ingredients on a plain background\n• Making sure ingredients are well-lit',
-        [
-          { 
-            text: 'Try Again', 
-            onPress: () => {
-              // Already back to select screen, do nothing extra
-            }
-          }
-        ]
+        [{ text: 'Try Again' }]
       );
     }
   } catch (error) {
     console.error('Detection error:', error);
-    setStep('select'); // Go back to select screen on error
+    setStep('select');
     
     Alert.alert(
       'Scan Failed',
       'Failed to detect ingredients. Please try again with a clearer image.',
-      [
-        { 
-          text: 'OK', 
-          onPress: () => {
-            // Already back to select screen
-          }
-        }
-      ]
+      [{ text: 'OK' }]
     );
   } finally {
     setLoading(false);
   }
 };
 
-  // Fetch matching recipes based on selected ingredients
-  const fetchMatchingRecipes = async (ingredients) => {
-    if (ingredients.length === 0) {
-      setMatchingRecipes([]);
-      return;
+// Fetch matching recipes based on selected ingredients (for when user toggles ingredients)
+const fetchMatchingRecipes = async (ingredients) => {
+  if (ingredients.length === 0) {
+    setMatchingRecipes([]);
+    return;
+  }
+  
+  try {
+    const result = await RecipeService.findRecipesByIngredients(ingredients);
+    if (result.success) {
+      const filtered = (result.recipes || []).filter(r => r.matchPercentage > 0);
+      setMatchingRecipes(filtered);
     }
-    
-    try {
-      const result = await RecipeService.findRecipesByIngredients(ingredients);
-      if (result.success) {
-        const filtered = (result.recipes || []).filter(r => r.matchPercentage > 0);
-        setMatchingRecipes(filtered);
-      }
-    } catch (error) {
-      console.error('Fetch recipes error:', error);
-    }
-  };
+  } catch (error) {
+    console.error('Fetch recipes error:', error);
+  }
+};
 
   // Toggle ingredient selection
   const toggleIngredient = (ingredientName) => {
