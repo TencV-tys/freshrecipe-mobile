@@ -90,32 +90,70 @@ class RecipeService {
     }
   }
 
-  // ✅ Scan method for ingredient detection
   async scanIngredients(imageUri) {
-    try {
-      const formData = new FormData();
-      formData.append('image', {
-        uri: imageUri,
-        type: 'image/jpeg',
-        name: 'scan_photo.jpg',
-      });
-
-      const response = await api.post('/recipes/scan', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-      
-      return { success: true, data: response.data };
-    } catch (error) {
-      console.error('Failed to scan ingredients:', error);
+  try {
+    const formData = new FormData();
+    const fileExtension = imageUri.split('.').pop();
+    const mimeType = fileExtension === 'png' ? 'image/png' : 'image/jpeg';
+    
+    formData.append('image', {
+      uri: imageUri,
+      type: mimeType,
+      name: `scan_photo.${fileExtension}`,
+    });
+    
+    console.log('📸 Sending image to scan endpoint...');
+    
+    const response = await api.post('/recipes/scan', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+        'Accept': 'application/json',
+      },
+    });
+    
+    console.log('✅ Scan response:', response.data);
+    
+    // Check if ingredients were detected
+    const detectedIngredients = response.data?.detected || [];
+    
+    if (detectedIngredients.length === 0) {
+      console.log('⚠️ No ingredients detected in image');
       return { 
         success: false, 
-        error: error.response?.data?.message || 'Failed to scan ingredients',
-        data: null
+        error: 'No ingredients detected. Please try again with a clearer image of ingredients.',
+        data: { detected: [] }
       };
     }
+    
+    // Check confidence levels - filter out low confidence detections
+    const highConfidenceIngredients = detectedIngredients.filter(ing => ing.confidence >= 50);
+    
+    if (highConfidenceIngredients.length === 0) {
+      console.log('⚠️ Only low confidence ingredients detected');
+      return { 
+        success: false, 
+        error: 'Could not confidently detect ingredients. Please try with a clearer image.',
+        data: { detected: detectedIngredients }
+      };
+    }
+    
+    return { 
+      success: true, 
+      data: {
+        detected: highConfidenceIngredients,
+        allDetected: detectedIngredients
+      }
+    };
+    
+  } catch (error) {
+    console.error('❌ Scan error:', error);
+    return { 
+      success: false, 
+      error: error.response?.data?.message || 'Failed to scan ingredients. Please try again.',
+      data: { detected: [] }
+    };
   }
+}
 
   // ✅ Generate Filipino recipe from ingredients
   async generateFilipinoRecipe(ingredients) {
@@ -179,4 +217,4 @@ class RecipeService {
 
 }
 
-export default new RecipeService();
+export default new RecipeService();  

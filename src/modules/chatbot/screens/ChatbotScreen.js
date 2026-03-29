@@ -120,6 +120,8 @@ const ChatbotScreen = ({ navigation }) => {
   useEffect(() => {
     const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => {
       setKeyboardVisible(true);
+      // Scroll to bottom when keyboard appears
+      setTimeout(scrollToBottom, 100);
     });
     const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
       setKeyboardVisible(false);
@@ -152,7 +154,9 @@ const ChatbotScreen = ({ navigation }) => {
 
   const scrollToBottom = () => {
     setTimeout(() => {
-      flatListRef.current?.scrollToEnd({ animated: true });
+      if (flatListRef.current) {
+        flatListRef.current.scrollToEnd({ animated: true });
+      }
     }, 100);
   };
 
@@ -292,92 +296,92 @@ const ChatbotScreen = ({ navigation }) => {
 
       <KeyboardAvoidingView
         style={styles.keyboardView}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <View style={styles.innerContainer}>
-            {/* Header with animation - removed back button */}
-            <Animated.View 
-              style={[
-                styles.header,
-                { opacity: headerAnim, transform: [{ translateY: headerTranslateY }] }
-              ]}
-            >
-              <View style={styles.headerTop}>
-                <View style={styles.headerIcon}>
-                  <View style={styles.headerIconBadge}>
-                    <Icon name="chatbubble-ellipses" size={28} color={theme.primary} />
-                  </View>
+        <View style={styles.innerContainer}>
+          {/* Header with animation */}
+          <Animated.View 
+            style={[
+              styles.header,
+              { opacity: headerAnim, transform: [{ translateY: headerTranslateY }] }
+            ]}
+          >
+            <View style={styles.headerTop}>
+              <View style={styles.headerIcon}>
+                <View style={styles.headerIconBadge}>
+                  <Icon name="chatbubble-ellipses" size={28} color={theme.primary} />
                 </View>
               </View>
-              <Text style={styles.headerTitle}>Recipe Assistant</Text>
-              <Text style={styles.headerSubtitle}>
-                Ask me anything about cooking! 🍳
-              </Text>
-            </Animated.View>
+            </View>
+            <Text style={styles.headerTitle}>Recipe Assistant</Text>
+            <Text style={styles.headerSubtitle}>
+              Ask me anything about cooking! 🍳
+            </Text>
+          </Animated.View>
 
-            {/* Messages List */}
-            <FlatList
-              ref={flatListRef}
-              data={messages}
-              renderItem={({ item, index }) => <MessageItem item={item} index={index} />}
-              keyExtractor={item => item.id}
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.messagesList}
-              onLayout={scrollToBottom}
-              ListHeaderComponent={
-                messages.length === 1 ? (
-                  <View style={styles.suggestionsContainer}>
-                    <Text style={styles.suggestionsTitle}>✨ Try asking:</Text>
-                    <View style={styles.suggestionsList}>
-                      {suggestions.map((suggestion, index) => (
-                        <SuggestionItem key={suggestion.text} suggestion={suggestion} index={index} />
-                      ))}
-                    </View>
+          {/* Messages List - Always scrollable */}
+          <FlatList
+            ref={flatListRef}
+            data={messages}
+            renderItem={({ item, index }) => <MessageItem item={item} index={index} />}
+            keyExtractor={item => item.id}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.messagesList}
+            onLayout={scrollToBottom}
+            scrollEnabled={true}
+            keyboardShouldPersistTaps="handled"
+            ListHeaderComponent={
+              messages.length === 1 ? (
+                <View style={styles.suggestionsContainer}>
+                  <Text style={styles.suggestionsTitle}>✨ Try asking:</Text>
+                  <View style={styles.suggestionsList}>
+                    {suggestions.map((suggestion, index) => (
+                      <SuggestionItem key={suggestion.text} suggestion={suggestion} index={index} />
+                    ))}
                   </View>
-                ) : null
-              }
-              ListFooterComponent={isTyping ? <TypingIndicator /> : null}
-            />
-            
-            {/* Input Container with dynamic bottom padding based on keyboard visibility */}
-            <Animated.View 
-              style={[
-                styles.inputContainer,
-                keyboardVisible && styles.inputContainerActive,
-                { 
-                  paddingBottom: bottomPadding,
-                  opacity: inputAnim,
-                  transform: [{ translateY: inputTranslateY }]
-                }
-              ]}
-            >
-              <TextInput
-                style={styles.input}
-                placeholder="Ask me anything about cooking..."
-                placeholderTextColor={theme.gray}
-                value={inputText}
-                onChangeText={setInputText}
-                multiline
-                maxLength={500}
-                returnKeyType="send"
-                onSubmitEditing={handleSend}
-              />
-              <PressableScale
-                onPress={handleSend}
-                disabled={!inputText.trim() || isTyping}
-              >
-                <View style={[
-                  styles.sendButton, 
-                  (!inputText.trim() || isTyping) && styles.sendButtonDisabled
-                ]}>
-                  <Icon name="send" size={20} color={theme.white} />
                 </View>
-              </PressableScale>
-            </Animated.View>
-          </View>
-        </TouchableWithoutFeedback>
+              ) : null
+            }
+            ListFooterComponent={isTyping ? <TypingIndicator /> : null}
+          />
+          
+          {/* Input Container with dynamic bottom padding */}
+          <Animated.View 
+            style={[
+              styles.inputContainer,
+              keyboardVisible && styles.inputContainerActive,
+              { 
+                paddingBottom: bottomPadding,
+                opacity: inputAnim,
+                transform: [{ translateY: inputTranslateY }]
+              }
+            ]}
+          >
+            <TextInput
+              style={styles.input}
+              placeholder="Ask me anything about cooking..."
+              placeholderTextColor={theme.gray}
+              value={inputText}
+              onChangeText={setInputText}
+              multiline
+              maxLength={500}
+              returnKeyType="send"
+              onSubmitEditing={handleSend}
+            />
+            <PressableScale
+              onPress={handleSend}
+              disabled={!inputText.trim() || isTyping}
+            >
+              <View style={[
+                styles.sendButton, 
+                (!inputText.trim() || isTyping) && styles.sendButtonDisabled
+              ]}>
+                <Icon name="send" size={20} color={theme.white} />
+              </View>
+            </PressableScale>
+          </Animated.View>
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -466,6 +470,7 @@ const styles = {
   messagesList: {
     padding: 16,
     paddingBottom: 20,
+    flexGrow: 1,
   },
   
   // Message styles (matching HomeScreen card style)
@@ -537,7 +542,6 @@ const styles = {
     borderTopColor: theme.lightGray,
     backgroundColor: theme.white,
     alignItems: 'flex-end',
-    transition: 'padding-bottom 0.2s ease',
   },
   inputContainerActive: {
     borderTopColor: theme.primaryFaint,
@@ -650,4 +654,4 @@ const styles = {
   },
 };
 
-export default ChatbotScreen; 
+export default ChatbotScreen;

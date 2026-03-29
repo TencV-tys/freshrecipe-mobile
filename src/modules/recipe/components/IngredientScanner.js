@@ -18,6 +18,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import RecipeService from '../../recipe/services/recipe.service';
 import colors from '../../shared/constants/colors';
 import { BASE_IP } from '../../../api/apiConfig';
+import * as ImageManipulator from 'expo-image-manipulator';
 
 const { width, height } = Dimensions.get('window');
 
@@ -176,72 +177,129 @@ const IngredientScanner = ({ onClose, onScanComplete, navigation }) => {
     return `${BASE_IP}${imagePath}`;
   };
 
-  // Open camera
-  const takePhoto = async () => {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission needed', 'Please grant camera permission to scan ingredients');
-      return;
-    }
+ const compressImage = async (uri) => {
+  try {
+    console.log('📦 Compressing image...');
+    const result = await ImageManipulator.manipulateAsync(
+      uri,
+      [{ resize: { width: 800 } }],
+      { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG }
+    );
+    console.log('✅ Image compressed successfully');
+    return result.uri;
+  } catch (error) {
+    console.error('❌ Image compression error:', error);
+    return uri; // Return original if compression fails
+  }
+};
 
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      quality: 0.8,
-    });
+// Open camera
+const takePhoto = async () => {
+  const { status } = await ImagePicker.requestCameraPermissionsAsync();
+  if (status !== 'granted') {
+    Alert.alert('Permission needed', 'Please grant camera permission to scan ingredients');
+    return;
+  }
 
-    if (!result.canceled) {
-      setCapturedImage(result.assets[0].uri);
-      await detectIngredients(result.assets[0].uri);
-    }
-  };
+  const result = await ImagePicker.launchCameraAsync({
+    mediaTypes: ['images'],
+    allowsEditing: true,
+    quality: 0.5,
+    base64: false,
+    exif: false,
+  });
 
-  // Open gallery
-  const pickImage = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission needed', 'Please grant permission to access your photos');
-      return;
-    }
+  if (!result.canceled) {
+    const originalUri = result.assets[0].uri;
+    setCapturedImage(originalUri);
+    
+    // ✅ Compress the image before detecting
+    const compressedUri = await compressImage(originalUri);
+    await detectIngredients(compressedUri);
+  }
+};
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      quality: 0.8,
-    });
+// Open gallery
+const pickImage = async () => {
+  const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (status !== 'granted') {
+    Alert.alert('Permission needed', 'Please grant permission to access your photos');
+    return;
+  }
 
-    if (!result.canceled) {
-      setCapturedImage(result.assets[0].uri);
-      await detectIngredients(result.assets[0].uri);
-    }
-  };
+  const result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ['images'],
+    allowsEditing: true,
+    quality: 0.5,
+    base64: false,
+    exif: false,
+  });
+
+  if (!result.canceled) {
+    const originalUri = result.assets[0].uri;
+    setCapturedImage(originalUri);
+    
+    // ✅ Compress the image before detecting
+    const compressedUri = await compressImage(originalUri);
+    await detectIngredients(compressedUri);
+  }
+};
+ 
 
   // Detect ingredients from image
-  const detectIngredients = async (imageUri) => {
-    setStep('scanning');
-    setLoading(true);
+const detectIngredients = async (imageUri) => {
+  setStep('scanning');
+  setLoading(true);
+  
+  try {
+    const result = await RecipeService.scanIngredients(imageUri);
     
-    try {
-      const result = await RecipeService.scanIngredients(imageUri);
+    if (result.success && result.data.detected && result.data.detected.length > 0) {
+      const ingredients = result.data.detected;
+      console.log('✅ Ingredients detected:', ingredients);
       
-      if (result.success) {
-        const ingredients = result.data.detected;
-        setDetectedIngredients(ingredients);
-        setSelectedIngredients(ingredients.map(i => i.name));
-        await fetchMatchingRecipes(ingredients.map(i => i.name));
-        setStep('results');
-      } else {
-        Alert.alert('Error', result.error || 'Failed to detect ingredients');
-        setStep('select');
-      }
-    } catch (error) {
-      console.error('Detection error:', error);
-      Alert.alert('Error', 'Failed to detect ingredients. Please try again.');
-      setStep('select');
-    } finally {
-      setLoading(false);
+      setDetectedIngredients(ingredients);
+      setSelectedIngredients(ingredients.map(i => i.name));
+      await fetchMatchingRecipes(ingredients.map(i => i.name));
+      setStep('results'); // Go to results screen
+    } else {
+      // No ingredients detected - go back to select screen, NOT close the modal
+      console.log('⚠️ No ingredients detected');
+      setStep('select'); // Go back to select screen
+      
+      Alert.alert(
+        'No Ingredients Detected',
+        result.error || 'Could not detect any ingredients in this image.\n\nPlease try:\n• Using a clearer image\n• Placing ingredients on a plain background\n• Making sure ingredients are well-lit',
+        [
+          { 
+            text: 'Try Again', 
+            onPress: () => {
+              // Already back to select screen, do nothing extra
+            }
+          }
+        ]
+      );
     }
-  };
+  } catch (error) {
+    console.error('Detection error:', error);
+    setStep('select'); // Go back to select screen on error
+    
+    Alert.alert(
+      'Scan Failed',
+      'Failed to detect ingredients. Please try again with a clearer image.',
+      [
+        { 
+          text: 'OK', 
+          onPress: () => {
+            // Already back to select screen
+          }
+        }
+      ]
+    );
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Fetch matching recipes based on selected ingredients
   const fetchMatchingRecipes = async (ingredients) => {
