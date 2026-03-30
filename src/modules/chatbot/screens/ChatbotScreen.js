@@ -33,7 +33,7 @@ const theme = {
   blueFaint: '#f0f8ff',
   dark: '#1a1a2e',
   gray: '#8a8a9a',
-  lightGray: '#f4f4f8',
+  lightGray: '#f4f4f8', 
   white: '#ffffff',
 };
 
