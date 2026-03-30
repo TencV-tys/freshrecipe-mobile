@@ -12,7 +12,7 @@ class ChatbotService {
         reply: "I'm having trouble connecting. Please try again later.",
       };
     }
-  }
+  } 
 }
 
 export default new ChatbotService();
