@@ -168,29 +168,34 @@ const EditProfileScreen = ({ navigation }) => {
   };
 
   const uploadAvatar = async (imageUri) => {
-    setUploadingAvatar(true);
-    try {
-      const formDataUpload = new FormData();
-      formDataUpload.append('profileImage', {
-        uri: imageUri,
-        type: 'image/jpeg',
-        name: 'avatar.jpg',
-      });
-      
-      const uploadRes = await api.post('/users/upload/avatar', formDataUpload, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      
-      if (uploadRes.data.user && setUser) {
-        setUser(uploadRes.data.user);
-      }
-    } catch (error) {
-      console.error('Avatar upload error:', error);
-      Alert.alert('Error', 'Failed to upload avatar');
-    } finally {
-      setUploadingAvatar(false);
+  setUploadingAvatar(true);
+  try {
+    const formDataUpload = new FormData();
+
+    // Use the Expo URI directly (file:// is fine for mobile)
+    formDataUpload.append('profileImage', {
+      uri: imageUri,
+      type: 'image/jpeg', // or detect dynamically if you want
+      name: 'avatar.jpg',
+    });
+
+    // Make sure headers are set properly
+    const uploadRes = await api.post('/users/upload/avatar', formDataUpload, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    if (uploadRes.data.user && setUser) {
+      setUser(uploadRes.data.user);
     }
-  };
+  } catch (error) {
+    console.error('Avatar upload error:', error);
+    Alert.alert('Error', 'Failed to upload avatar. Try again.');
+  } finally {
+    setUploadingAvatar(false);
+  }
+};
 
   const handleSave = async () => {
     setLoading(true);
