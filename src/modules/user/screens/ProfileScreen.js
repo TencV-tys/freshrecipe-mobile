@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef,useCallback } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useAuth } from '../../../context/AuthContext';
 import api from '../../../api/api';
@@ -137,18 +138,22 @@ const ProfileScreen = ({ navigation }) => {
   const menuAnim = useRef(new Animated.Value(0)).current;
   const logoutAnim = useRef(new Animated.Value(0)).current;
 
-  useEffect(() => {
+ useFocusEffect(
+  useCallback(() => {
     fetchUserStats();
     fetchGeneratedCount();
     fetchUnreadCount();
-    
-    // Entrance animations with proper delays
-    Animated.spring(headerAnim, { toValue: 1, tension: 50, friction: 9, useNativeDriver: true }).start();
-    Animated.spring(avatarAnim, { toValue: 1, tension: 55, friction: 8, delay: 100, useNativeDriver: true }).start();
-    Animated.spring(statsAnim, { toValue: 1, tension: 55, friction: 9, delay: 200, useNativeDriver: true }).start();
-    Animated.spring(menuAnim, { toValue: 1, tension: 55, friction: 9, delay: 300, useNativeDriver: true }).start();
-    Animated.spring(logoutAnim, { toValue: 1, tension: 50, friction: 9, delay: 500, useNativeDriver: true }).start();
-  }, []);
+  }, [])
+);
+
+// Keep the animation useEffect separate (runs once on mount only):
+useEffect(() => {
+  Animated.spring(headerAnim, { toValue: 1, tension: 50, friction: 9, useNativeDriver: true }).start();
+  Animated.spring(avatarAnim, { toValue: 1, tension: 55, friction: 8, delay: 100, useNativeDriver: true }).start();
+  Animated.spring(statsAnim, { toValue: 1, tension: 55, friction: 9, delay: 200, useNativeDriver: true }).start();
+  Animated.spring(menuAnim, { toValue: 1, tension: 55, friction: 9, delay: 300, useNativeDriver: true }).start();
+  Animated.spring(logoutAnim, { toValue: 1, tension: 50, friction: 9, delay: 500, useNativeDriver: true }).start();
+}, []);
 
   const fetchUserStats = async () => {
     try {
@@ -172,7 +177,7 @@ const ProfileScreen = ({ navigation }) => {
       console.error('Failed to fetch generated count:', error);
     }
   };
-
+ 
   const fetchUnreadCount = async () => {
     const result = await NotificationService.getUnreadNotifications();
     if (result.success) {
